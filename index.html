@@ -263,6 +263,15 @@
   }
   .month-row-btn:hover{ background:var(--accent-soft); border-color:var(--accent); }
   .month-row-btn .mr-label{ min-width:76px; font-weight:600; }
+  .month-row-btn .mr-extra{
+    font-family:'IBM Plex Mono', monospace; font-size:11px; color:var(--text-soft);
+    padding-left:8px; border-left:1px solid var(--border); white-space:nowrap;
+  }
+  .month-row-btn .mr-extra.mr-success{ color:var(--success); font-weight:600; }
+  @media (max-width:640px){
+    .month-row-btn{ flex-wrap:wrap; }
+    .month-row-btn .breakdown-bar-track{ order:5; flex-basis:100%; margin-top:4px; }
+  }
 
   .chat-input-row{
     border-top:1px solid var(--border);
@@ -1019,6 +1028,9 @@
   function renderMonthlyOverview(){
     const series = monthlySeries();
     const totalWorkload = records.reduce((s,r)=> s + (r.workload||0), 0);
+    const statsByKey = {};
+    (monthlyStats||[]).forEach(m=> statsByKey[m.monthKey] = m);
+
     let html = `<div class="ans-title">สรุปผลการทำงานรายเดือน (${series.length} เดือน)</div>`;
     html += `<div class="ans-stats">
       <div class="ans-stat"><div class="n">${records.length}</div><div class="l">งานสะสมทั้งหมด</div></div>
@@ -1030,12 +1042,18 @@
       const [y,m] = mk.split("-").map(Number);
       const pct = Math.round((stat.count/maxCount)*100);
       const queryText = "สรุปผลเดือน" + monthNamesTh[m-1] + " " + (y+543);
+      const kpi = statsByKey[mk];
+      const extraStats = kpi
+        ? `<span class="mr-extra">${fmtNum(stat.workload)} หน่วย</span><span class="mr-extra mr-success">${kpi.successRate}%</span>`
+        : `<span class="mr-extra">${fmtNum(stat.workload)} หน่วย</span>`;
       return `<button class="month-row-btn" data-query="${escapeHtml(queryText)}">
         <span class="mr-label">${monthLabel(mk)}</span>
         <span class="breakdown-bar-track"><span class="breakdown-bar-fill" style="width:${pct}%"></span></span>
         <span class="mono">${stat.count} งาน</span>
+        ${extraStats}
       </button>`;
     }).join("") + `</div>`;
+    html += `<div class="corr-hedge">แต่ละแถวแสดงจำนวนงาน / ภาระงานรวม (หน่วย) / อัตราความสำเร็จ (ถ้ามีข้อมูลจากชีท KPI) — คลิกเพื่อดูรายละเอียดเต็มของเดือนนั้น</div>`;
     return html;
   }
 
@@ -1454,7 +1472,7 @@
     "สรุปผล KPI รายเดือน",
     "วงรอบการประเมินที่ 2 ปี 2569",
     "แนวโน้ม",
-    "สรุปผลรายเดือน"
+    "สรุปผลรายเดือน",
     "อาคารไหนมีปัญหามากที่สุด",
     "ช่วยสรุปรายงานผู้บริหาร"
   ];
