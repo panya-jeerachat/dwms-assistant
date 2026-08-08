@@ -825,14 +825,35 @@
     }).join("");
   }
 
-  function renderRanking(title, ranked, extraNote){
+  function renderRanking(title, ranked, extraNote, drillQueryFn){
     let html = `<div class="ans-title">${escapeHtml(title)}</div>`;
     if(!ranked.length){ return html + `<div class="empty-note">ไม่พบข้อมูล</div>`; }
     const top = ranked[0];
     const total = ranked.reduce((s,[,st])=> s+st.count, 0);
     const pct = Math.round((top[1].count/total)*100);
-    html += `<div style="font-size:13px; margin-bottom:10px;">อันดับ 1: <b>${escapeHtml(top[0])}</b> — ${top[1].count} ครั้ง (${pct}% ของทั้งหมด)</div>`;
-    html += renderRankBars(ranked, 8);
+    html += `<div class="ans-stats">
+      <div class="ans-stat"><div class="n">${top[1].count}</div><div class="l">อันดับ 1: ${escapeHtml(top[0])}</div></div>
+      <div class="ans-stat"><div class="n">${pct}%</div><div class="l">สัดส่วนของทั้งหมด</div></div>
+      <div class="ans-stat"><div class="n">${fmtNum(top[1].workload)}</div><div class="l">ภาระงานรวม (หน่วย)</div></div>
+    </div>`;
+    if(drillQueryFn){
+      html += `<div style="font-size:11px; color:var(--text-soft); margin:8px 0 6px;">คลิกรายการเพื่อดูรายละเอียดเจาะลึก</div>`;
+    }
+    const maxCount = ranked[0][1].count;
+    html += `<div class="month-overview-list">` + ranked.slice(0,8).map(([name,stat])=>{
+      const p = Math.round((stat.count/maxCount)*100);
+      const rowPct = Math.round((stat.count/total)*100);
+      const inner = `<span class="mr-label">${escapeHtml(name)}</span>
+        <span class="breakdown-bar-track"><span class="breakdown-bar-fill" style="width:${p}%"></span></span>
+        <span class="mono">${stat.count} ครั้ง</span>
+        <span class="mr-extra">${fmtNum(stat.workload)} หน่วย</span>
+        <span class="mr-extra">${rowPct}%</span>`;
+      if(drillQueryFn){
+        const q = drillQueryFn(name);
+        return `<button class="month-row-btn" data-query="${escapeHtml(q)}">${inner}</button>`;
+      }
+      return `<div class="month-row-btn" style="cursor:default;">${inner}</div>`;
+    }).join("") + `</div>`;
     if(extraNote) html += `<div class="corr-hedge">${extraNote}</div>`;
     return html;
   }
@@ -1191,10 +1212,17 @@
     const totalWorkload = filtered.reduce((s,r)=> s + (r.workload||0), 0);
     const breakdown = categoryBreakdown(filtered);
 
-    const statsInRange = kpiSorted().filter(s => s.monthKey >= range.start.slice(0,7) && s.monthKey <= range.end.slice(0,7));
-    const avgSuccess = statsInRange.length ? (statsInRange.reduce((s,m)=>s+(m.successRate||0),0)/statsInRange.length) : null;
-    const hoursSaved = statsInRange.reduce((s,m)=>s+(m.hoursSaved||0),0);
-    const paperSaved = statsInRange.reduce((s,m)=>s+(m.paperSaved||0),0);
+    // คำนวณ "ลดกระดาษ" และ "ลดเวลา" จากจำนวนงานชุดเดียวกับที่แสดงเป็น "งานทั้งหมด" โดยตรง
+    // (อัตราส่วนคงที่จริงจากชีทสรุปประสิทธิภาพ: ลดกระดาษ = จำนวนงาน x2 แผ่น, ลดเวลา = จำนวนงาน x0.75 ชม. เสมอทุกเดือน)
+    // เดิมเคยรวมค่าจากชีทสรุปแยกต่างหาก ซึ่งจำนวนงานรายเดือนของ 2 ชีทอาจคลาดเคลื่อนกันเล็กน้อย
+    // (ข้อมูลกรอกคนละช่วงเวลา) ทำให้ตัวเลขไม่ตรงกับ "งานทั้งหมด" ที่แสดงในหน้าเดียวกัน จึงเปลี่ยนมาคำนวณ
+    // จากชุดข้อมูลเดียวกันเสมอเพื่อความสอดคล้องภายใน
+    const paperSaved = filtered.length * 2;
+    const hoursSaved = filtered.length * 0.75;
+
+    // อัตราความสำเร็จ: คำนวณจากสถานะจริงของแต่ละงานในชุดข้อมูลเดียวกัน (ไม่ใช้ค่าเฉลี่ยจากชีทแยก)
+    const successCount = filtered.filter(r => (r.status||"").trim() === "สำเร็จ").length;
+    const avgSuccess = filtered.length ? (successCount / filtered.length * 100) : null;
 
     const title = "สรุปภาระงานวงรอบการประเมินที่ " + cycleNum + " ปี " + buddhistYear;
     let html = `<div class="ans-title">${escapeHtml(title)}</div>`;
@@ -1212,14 +1240,14 @@
     </div>`;
     if(avgSuccess !== null){
       html += `<div class="ans-stats">
-        <div class="ans-stat"><div class="n">${avgSuccess.toFixed(1)}%</div><div class="l">อัตราความสำเร็จเฉลี่ย</div></div>
+        <div class="ans-stat"><div class="n">${avgSuccess.toFixed(1)}%</div><div class="l">อัตราความสำเร็จ (${successCount}/${filtered.length} งาน)</div></div>
         <div class="ans-stat"><div class="n">${fmtNum(hoursSaved)}</div><div class="l">ลดเวลาทำงาน (ชั่วโมง)</div></div>
         <div class="ans-stat"><div class="n">${fmtNum(paperSaved)}</div><div class="l">ลดการใช้กระดาษ (แผ่น)</div></div>
       </div>`;
     }
     html += `<div style="font-size:12px; font-weight:600; margin:10px 0 4px; color:var(--text-soft);">แยกตามประเภทงาน</div>`;
     html += renderBreakdown(breakdown, filtered.length);
-    html += `<div class="corr-hedge">ใช้ช่วงวันที่ตามนิยามวงรอบการประเมิน: รอบที่ 1 = 1 ก.ย. – 28/29 ก.พ. (ข้ามปี), รอบที่ 2 = 1 มี.ค. – 31 ส.ค. — ส่งออกด้านล่างเพื่อแนบเป็นหลักฐาน ป.03 ได้เลย</div>`;
+    html += `<div class="corr-hedge">ใช้ช่วงวันที่ตามนิยามวงรอบการประเมิน: รอบที่ 1 = 1 ก.ย. – 28/29 ก.พ. (ข้ามปี), รอบที่ 2 = 1 มี.ค. – 31 ส.ค. · ลดกระดาษ/ลดเวลาคำนวณจากจำนวนงานชุดนี้โดยตรง (x2 แผ่น, x45 นาทีต่องาน) เพื่อให้ตัวเลขสอดคล้องกับ "งานทั้งหมด" เสมอ — ส่งออกด้านล่างเพื่อแนบเป็นหลักฐาน ป.03 ได้เลย</div>`;
     html += renderExportBar(filtered, title);
     return html;
   }
@@ -1258,7 +1286,8 @@
         "อาคารคำนวณจากรหัสห้อง (เช่น EN1-202 → EN1) เนื่องจากข้อมูลยังไม่มีคอลัมน์อาคารแยกต่างหาก");
     }
     if(intent.main === "roomRank"){
-      return renderRanking("ห้องที่มีปัญหาบ่อยที่สุด", groupCount(records, r=>r.room));
+      return renderRanking("ห้องที่มีปัญหาบ่อยที่สุด", groupCount(records, r=>r.room), null,
+        (name)=> name + " มีปัญหาอะไรบ้าง");
     }
     if(intent.main === "durationRank"){
       const ranked = groupCount(records, r=>r.category);
