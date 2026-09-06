@@ -343,6 +343,27 @@
   }
   .example-chip:hover{ background:var(--accent-soft); border-color:var(--accent); }
 
+  .quick-search-panel{
+    margin-top:16px; padding-top:14px; border-top:1px solid var(--border);
+  }
+  .quick-search-label{
+    font-size:11px; font-weight:600; color:var(--text-soft);
+    letter-spacing:0.02em; margin-bottom:8px;
+  }
+  .quick-search{ display:flex; flex-wrap:wrap; gap:7px; }
+  .qs-chip{
+    font-family:inherit; font-size:11.5px;
+    background:var(--surface); border:1px solid var(--border-strong);
+    color:var(--text); padding:6px 12px; border-radius:20px; cursor:pointer;
+    display:inline-flex; align-items:center; gap:5px;
+  }
+  .qs-chip:hover{ background:var(--accent-soft); border-color:var(--accent); }
+  .qs-chip .qs-count{
+    font-family:'IBM Plex Mono', monospace; font-size:10px; font-weight:600;
+    background:var(--accent-soft); color:var(--accent-strong);
+    padding:1px 6px; border-radius:10px;
+  }
+
   .foot-note{ margin-top:14px; font-size:11px; color:var(--text-faint); text-align:center; }
   .site-footer{
     margin-top:20px; padding-top:14px;
@@ -405,6 +426,11 @@
   </div>
 
   <div class="examples" id="examples"></div>
+
+  <div class="quick-search-panel">
+    <div class="quick-search-label">ค้นหาด่วนตามหมวดหมู่</div>
+    <div class="quick-search" id="quickSearch"></div>
+  </div>
 
   <p class="foot-note">ระบบค้นหา/สรุปข้อมูลอัตโนมัติจากคำถามภาษาไทย อาจตีความคลาดเคลื่อนได้หากคำถามกำกวมมาก — ตรวจสอบ "ตัวกรองที่ใช้" ที่แสดงในทุกคำตอบเพื่อยืนยันความถูกต้อง</p>
 
@@ -477,6 +503,7 @@
   const elVoiceStatus = document.getElementById('voiceStatus');
   const elMetricRow = document.getElementById('metricRow');
   const elExamples = document.getElementById('examples');
+  const elQuickSearch = document.getElementById('quickSearch');
   const syncDot = document.getElementById('syncDot');
   const syncText = document.getElementById('syncText');
   const syncNote = document.getElementById('syncNote');
@@ -673,28 +700,53 @@
 
   function extractRoom(qOriginal){
     const roomsList = Array.from(new Set(records.map(r=>r.room).filter(Boolean)));
-    const qCompact = qOriginal.toUpperCase().replace(/\s+/g,"");
-    let matched = [];
-    // จับคู่แบบตรงตัวก่อน (ห้องในข้อมูลปรากฏในคำถาม)
-    roomsList.forEach(room=>{
-      const roomCompact = room.toUpperCase().replace(/\s+/g,"");
-      if(roomCompact.length >= 3 && qCompact.indexOf(roomCompact) !== -1){
-        matched.push(room);
+
+    function tryMatch(qCompact){
+      let found = [];
+      roomsList.forEach(room=>{
+        const roomCompact = room.toUpperCase().replace(/\s+/g,"");
+        if(roomCompact.length >= 3 && qCompact.indexOf(roomCompact) !== -1){
+          found.push(room);
+        }
+      });
+      if(!found.length){
+        const codeMatch = qCompact.match(/EN\d[\w\-,]*/);
+        if(codeMatch){
+          const code = codeMatch[0];
+          roomsList.forEach(room=>{
+            const roomCompact = room.toUpperCase().replace(/\s+/g,"");
+            if(roomCompact.indexOf(code) !== -1 || code.indexOf(roomCompact) !== -1){
+              found.push(room);
+            }
+          });
+        }
       }
-    });
+      return found;
+    }
+
+    const qCompact = qOriginal.toUpperCase().replace(/\s+/g,"");
+    let matched = tryMatch(qCompact);
+
     if(!matched.length){
-      // ถ้าไม่เจอตรงตัว ลองจับรหัสแบบ EN + ตัวเลข/ตัวอักษรจากคำถาม แล้วหาห้องที่ขึ้นต้นตรงกัน
-      const codeMatch = qCompact.match(/EN\d[\w\-,]*/);
-      if(codeMatch){
-        const code = codeMatch[0];
-        roomsList.forEach(room=>{
-          const roomCompact = room.toUpperCase().replace(/\s+/g,"");
-          if(roomCompact.indexOf(code) !== -1 || code.indexOf(roomCompact) !== -1){
-            matched.push(room);
-          }
-        });
+      // แก้ปัญหาการฟังผิดของ Speech-to-Text ที่มักสับสนตัวอักษรภาษาอังกฤษที่ออกเสียงคล้ายกัน
+      // เช่น พูด "อีเอ็น 1" (EN1) แต่ระบบแปลงเสียงกลับได้ "เอ็ม 1" (M1) หรือ "เอ็น 1" (N1) เฉยๆ
+      // เนื่องจากห้องทั้งหมดในข้อมูลนี้ขึ้นต้นด้วย EN เสมอ จึงลองแปลงกลับเป็น EN แล้วค้นซ้ำ
+      const sttFixed = qCompact.replace(/\bM(\d)/g, "EN$1").replace(/\bN(\d)/g, "EN$1");
+      if(sttFixed !== qCompact){
+        matched = tryMatch(sttFixed);
       }
     }
+    if(!matched.length){
+      // ลองแบบตัดขีด/จุด/จุลภาคออกด้วย เผื่อ Speech-to-Text ไม่ใส่ขีดระหว่างเลข เช่น "EN1 202" แทน "EN1-202"
+      const superCompact = qCompact.replace(/[\-.,]/g,"");
+      roomsList.forEach(room=>{
+        const roomSuperCompact = room.toUpperCase().replace(/\s+/g,"").replace(/[\-.,]/g,"");
+        if(roomSuperCompact.length >= 3 && superCompact.indexOf(roomSuperCompact) !== -1){
+          matched.push(room);
+        }
+      });
+    }
+
     // ตัดตัวที่เป็นส่วนย่อยของอีกตัวออก (เช่น "EN1" ที่ซ้อนอยู่ใน "EN1-202") เหลือแค่ตัวที่จำเพาะเจาะจงที่สุด
     if(matched.length > 1){
       matched = matched.filter(room=>{
@@ -827,6 +879,65 @@
     const counts = {};
     list.forEach(r => { counts[r.category] = (counts[r.category]||0) + 1; });
     return Object.entries(counts).sort((a,b)=>b[1]-a[1]);
+  }
+
+  // ================= FUZZY SEARCH (ทนต่อคำผิด/คำที่ Speech-to-Text ฟังมาไม่ตรง) =================
+  // สร้าง "คลังคำศัพท์" จากเนื้อหาจริงในชีท (ประเภทงาน/รายละเอียด/หมายเหตุ/ห้อง) ครั้งเดียว แล้วอัปเดตใหม่
+  // ทุกครั้งที่ซิงก์ข้อมูล เพื่อให้คำที่ไม่ตรงเป๊ะแต่ใกล้เคียงกับคำที่มีอยู่จริงในข้อมูล ยังค้นหาเจอได้
+  let VOCAB = [];
+  function rebuildVocab(){
+    const bag = new Set();
+    records.forEach(r=>{
+      const text = normalize(r.category + " " + r.detail + " " + r.note);
+      const cleaned = text.replace(/[^\u0E00-\u0E7Fa-z0-9\s]/g," ");
+      let residual = cleaned;
+      Array.from(STOPWORDS).sort((a,b)=>b.length-a.length).forEach(w=>{ residual = residual.split(w).join(" "); });
+      residual.split(/\s+/).forEach(w=>{ w = w.trim(); if(w.length >= 3) bag.add(w); });
+    });
+    VOCAB = Array.from(bag);
+  }
+
+  function levenshtein(a, b){
+    if(a === b) return 0;
+    const al = a.length, bl = b.length;
+    if(al === 0) return bl;
+    if(bl === 0) return al;
+    let prev = new Array(bl+1);
+    for(let j=0;j<=bl;j++) prev[j] = j;
+    for(let i=1;i<=al;i++){
+      const curr = [i];
+      for(let j=1;j<=bl;j++){
+        const cost = a[i-1] === b[j-1] ? 0 : 1;
+        curr[j] = Math.min(curr[j-1]+1, prev[j]+1, prev[j-1]+cost);
+      }
+      prev = curr;
+    }
+    return prev[bl];
+  }
+
+  // หาคำในคลังคำศัพท์ที่ใกล้เคียงกับคำที่พิมพ์/พูดมามากที่สุด ภายในระยะที่ยอมรับได้ตามความยาวคำ
+  function fuzzyFindClosest(word){
+    if(word.length < 3) return null;
+    const maxDist = word.length <= 4 ? 1 : (word.length <= 7 ? 2 : 3);
+    let best = null, bestDist = Infinity;
+    for(const v of VOCAB){
+      if(Math.abs(v.length - word.length) > maxDist) continue;
+      const d = levenshtein(word, v);
+      if(d < bestDist){ bestDist = d; best = v; }
+      if(bestDist === 0) break;
+    }
+    return (best && bestDist > 0 && bestDist <= maxDist) ? best : null;
+  }
+
+  // ลองแก้คำค้นแต่ละคำให้ใกล้เคียงกับคำในข้อมูลจริงที่สุด ใช้เป็นทางเลือกสำรองเมื่อค้นแบบตรงตัวแล้วไม่พบผลลัพธ์
+  function fuzzyCorrectKeywords(keywords){
+    let changed = false;
+    const corrected = keywords.map(k=>{
+      const fix = fuzzyFindClosest(k);
+      if(fix && fix !== k){ changed = true; return fix; }
+      return k;
+    });
+    return { corrected, changed };
   }
 
   // ================= ANALYTICS ENGINE =================
@@ -1314,6 +1425,21 @@
 
   function renderAnswer(query){
     const qNorm = normalize(query);
+
+    // คำถามที่พิมพ์ตรงกับชื่อหมวดหมู่งานเป๊ะ (มาจากปุ่ม "ค้นหาด่วนตามหมวดหมู่") -> กรองตรงตัวแม่นยำ 100%
+    // ไม่ผ่านระบบตีความคำถามทั่วไป กันความเสี่ยงตีความผิดหรือได้ผลกว้างเกินไป
+    const qCompactExact = compact(query);
+    const exactCategory = Array.from(new Set(records.map(r=>r.category))).find(c => compact(c) === qCompactExact);
+    if(exactCategory){
+      const filtered = records.filter(r => r.category === exactCategory);
+      const totalWorkload = filtered.reduce((s,r)=> s + (r.workload||0), 0);
+      let html = `<div class="filter-chips"><span class="filter-chip">🏷 หมวดหมู่: ${escapeHtml(exactCategory)}</span></div>`;
+      html += `<div class="ans-title">พบ ${filtered.length} รายการ · รวมภาระงาน ${fmtNum(totalWorkload)} หน่วย</div>`;
+      html += renderRecordList(filtered, 15);
+      html += renderExportBar(filtered, exactCategory);
+      return html;
+    }
+
     const intent = detectIntent(qNorm);
 
     // ---- กลุ่มคำถามเชิงวิเคราะห์/เปรียบเทียบ/แนวโน้ม ที่ทำงานกับข้อมูลทั้งชุด ไม่ผ่าน filter ตามช่วงเวลา/ห้อง ----
@@ -1354,8 +1480,24 @@
       return renderTimeline(tlList) + renderExportBar(tlList, "Timeline เหตุการณ์");
     }
 
-    const filtered = applyFilters(scope, rooms, topic, keywords);
+    let filtered = applyFilters(scope, rooms, topic, keywords);
+    let fuzzyUsedText = null;
+    // ค้นแบบตรงตัวไม่เจอ -> ลองแก้คำค้นให้ใกล้เคียงกับคำจริงในข้อมูลที่สุดแล้วค้นซ้ำอีกครั้ง
+    // (ช่วยกรณีพิมพ์ผิด หรือพูดด้วยเสียงแล้ว Speech-to-Text แปลงคำมาไม่ตรงเป๊ะ)
+    if(!filtered.length && !topic && !rooms.length && keywords.length){
+      const fix = fuzzyCorrectKeywords(keywords);
+      if(fix.changed){
+        const retry = applyFilters(scope, rooms, topic, fix.corrected);
+        if(retry.length){
+          filtered = retry;
+          fuzzyUsedText = fix.corrected.join(", ");
+        }
+      }
+    }
     const chips = buildFilterChips(scope, rooms, topic, keywords);
+    if(fuzzyUsedText){
+      chips.push("🔍 ใกล้เคียงที่สุด: " + fuzzyUsedText);
+    }
 
     const totalWorkload = filtered.reduce((s,r)=> s + (r.workload||0), 0);
     const breakdown = categoryBreakdown(filtered);
@@ -1561,8 +1703,14 @@
     elMuteBtn.title = speechEnabled ? 'ปิดเสียงตอบ' : 'เปิดเสียงตอบ';
   }
 
+  let pendingSpeechText = null;
+  let audioUnlocked = false;
+
   function speakText(text){
     if(!speechEnabled || !text) return;
+    // เก็บข้อความไว้เผื่อโดนนโยบายเบราว์เซอร์บล็อกเสียง (มักเกิดกับข้อความทักทายตอนเปิดหน้าครั้งแรก
+    // ก่อนที่ผู้ใช้จะมีปฏิสัมพันธ์ใดๆ กับหน้าเว็บเลย) จะได้พูดซ้ำทันทีที่ปลดล็อกได้
+    pendingSpeechText = text;
     if(typeof window.speechSynthesis === 'undefined') return;
     try{
       window.speechSynthesis.cancel(); // หยุดเสียงที่พูดค้างอยู่ก่อนพูดคำตอบใหม่
@@ -1579,6 +1727,19 @@
       window.speechSynthesis.speak(utter);
     }catch(e){ /* เงียบไว้ ไม่ให้กระทบการใช้งานหลักของแชท */ }
   }
+
+  // เบราว์เซอร์หลายตัว (โดยเฉพาะบนมือถือ) บล็อกไม่ให้มีเสียงเล่นเลยจนกว่าผู้ใช้จะมีปฏิสัมพันธ์กับหน้าเว็บ
+  // อย่างน้อย 1 ครั้ง (แตะ/คลิก/กดปุ่มอะไรก็ได้) — ทำให้ข้อความทักทายแรกสุดมักไม่มีเสียงออก
+  // แก้โดย: พอมีปฏิสัมพันธ์ครั้งแรกไม่ว่าจะจุดไหนของหน้า (พิมพ์ กดไมค์ กดปุ่มถาม หรือกดที่ไหนก็ได้)
+  // ให้ลองพูดข้อความล่าสุดที่ค้างไว้ซ้ำทันที เพื่อให้รู้สึกว่าเสียงทำงาน "ตั้งแต่ครั้งแรก" มากที่สุดเท่าที่ทำได้
+  function unlockAudioOnce(){
+    if(audioUnlocked) return;
+    audioUnlocked = true;
+    if(pendingSpeechText && speechEnabled) speakText(pendingSpeechText);
+  }
+  document.addEventListener('pointerdown', unlockAudioOnce, {once:true, capture:true});
+  document.addEventListener('keydown', unlockAudioOnce, {once:true, capture:true});
+  document.addEventListener('touchstart', unlockAudioOnce, {once:true, capture:true, passive:true});
 
   elMuteBtn.addEventListener('click', ()=>{
     speechEnabled = !speechEnabled;
@@ -1679,6 +1840,24 @@
   Array.from(elExamples.children).forEach((btn,i)=>{
     btn.addEventListener('click', ()=>{ elChatInput.value = EXAMPLE_QUESTIONS[i]; handleSend(); });
   });
+
+  // ---- ค้นหาด่วนตามหมวดหมู่: กดแล้วดูรายการของหมวดนั้นได้ทันที ไม่ต้องพิมพ์/พูด ----
+  // เรียกซ้ำหลังซิงก์ข้อมูลใหม่ทุกครั้ง เผื่อมีหมวดหมู่เปลี่ยนแปลงในชีทจริง
+  function renderQuickSearch(){
+    const counts = {};
+    records.forEach(r=>{ if(r.category) counts[r.category] = (counts[r.category]||0) + 1; });
+    const sorted = Object.entries(counts).sort((a,b)=> b[1]-a[1]);
+    elQuickSearch.innerHTML = sorted.map(([cat,n])=>
+      `<button class="qs-chip" data-category="${escapeHtml(cat)}">${escapeHtml(cat)}<span class="qs-count">${n}</span></button>`
+    ).join("");
+    Array.from(elQuickSearch.children).forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        elChatInput.value = btn.getAttribute('data-category');
+        handleSend();
+      });
+    });
+  }
+  renderQuickSearch();
 
   // ================= LIVE SYNC (Google Sheet, JSONP) =================
   const HEADER_MAP = {
@@ -1863,7 +2042,9 @@
         const newRecords = gvizToRecords(response.table);
         if(!newRecords.length){ fail('ไม่พบแถวข้อมูลในชีท'); return; }
         records = newRecords;
+        rebuildVocab();
         renderMetrics();
+        renderQuickSearch();
         setSyncState('live', 'ซิงก์สดล่าสุด ' + fmtTime(new Date()) + ' น.');
         finish();
       }catch(e){
@@ -1927,6 +2108,7 @@
   updateLastResultLabel();
 
   // ================= INIT =================
+  rebuildVocab();
   renderMetrics();
   addMessage('assistant', `<div class="ans-title">สวัสดีครับ 👋</div><div style="font-size:12.5px; color:var(--text-soft);">พิมพ์ "วิเคราะห์ข้อมูล" เพื่อดูภาพรวมทั้งหมดในคำตอบเดียว หรือถามเจาะจงได้ เช่น จัดอันดับ เปรียบเทียบเดือน แนวโน้ม KPI ความสัมพันธ์เชิงเวลาระหว่าง 2 หัวข้อ — ทุกคำตอบที่มีรายการข้อมูลสามารถกดส่งออกเป็น Excel/PDF/TXT ได้ทันที</div>`);
   setSyncState('', 'แสดงข้อมูลสำรองที่บันทึกไว้ในไฟล์');
