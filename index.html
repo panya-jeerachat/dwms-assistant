@@ -9,26 +9,68 @@
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
+  /* ============ ธีมสีฟ้าไดนามิก (Dynamic Blue) ============
+     สีหลักทั้งหมดผูกกับตัวแปร --hue เพียงตัวเดียว จึงเปลี่ยนโทนทั้งระบบได้แบบเรียลไทม์
+     (JS จะค่อย ๆ ขยับค่า hue ตามเวลา/ตามการใช้งาน และสลับโหมดสว่าง-กลางคืนได้) */
   :root{
-    --bg:#FAFAF8;
-    --surface:#FFFFFF;
-    --border:#E4E1D9;
-    --border-strong:#CFCBC0;
-    --text:#1C1B18;
-    --text-soft:#6E6B62;
-    --text-faint:#A6A297;
-    --accent:#1F6F78;
-    --accent-soft:#E4EFEE;
-    --accent-strong:#164F56;
-    --success:#3F7D5C;
-    --success-soft:#E7F1EA;
-    --warn:#B4841F;
-    --warn-soft:#FBF1DE;
-    --danger:#B5504A;
-    --danger-soft:#FBEAE8;
-    --radius:10px;
-    --shadow:0 1px 2px rgba(28,27,24,0.04), 0 4px 16px rgba(28,27,24,0.04);
+    --hue: 208;
+    --hue2: 192;
+
+    --bg:            hsl(var(--hue) 60% 97%);
+    --bg-deep:       hsl(var(--hue) 55% 93%);
+    --surface:       #FFFFFF;
+    --surface-2:     hsl(var(--hue) 60% 98.5%);
+    --surface-glass: rgba(255,255,255,0.72);
+    --border:        hsl(var(--hue) 45% 89%);
+    --border-strong: hsl(var(--hue) 42% 79%);
+    --text:          hsl(var(--hue) 45% 12%);
+    --text-soft:     hsl(var(--hue) 22% 42%);
+    --text-faint:    hsl(var(--hue) 18% 60%);
+
+    --accent:        hsl(var(--hue) 84% 47%);
+    --accent-2:      hsl(var(--hue2) 88% 45%);
+    --accent-soft:   hsl(var(--hue) 92% 95%);
+    --accent-strong: hsl(calc(var(--hue) + 6) 80% 32%);
+    --accent-glow:   hsla(var(--hue), 90%, 50%, 0.28);
+
+    --success:#10855F;  --success-soft:hsl(160 60% 94%);
+    --warn:#B4841F;     --warn-soft:hsl(42 80% 94%);
+    --warn-text:#7A5A15;
+    --danger:#D2453F;   --danger-soft:hsl(4 75% 95%);
+
+    --radius:12px;
+    --shadow:0 1px 2px hsla(var(--hue),40%,20%,0.05), 0 8px 24px hsla(var(--hue),45%,25%,0.07);
+    --shadow-lg:0 10px 40px hsla(var(--hue),50%,25%,0.14);
+    --grad: linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%);
+    --speed: .22s;
   }
+
+  [data-theme="dark"]{
+    --bg:            hsl(var(--hue) 40% 8%);
+    --bg-deep:       hsl(var(--hue) 45% 5%);
+    --surface:       hsl(var(--hue) 32% 12%);
+    --surface-2:     hsl(var(--hue) 34% 14%);
+    --surface-glass: hsla(var(--hue), 35%, 14%, 0.72);
+    --border:        hsl(var(--hue) 30% 22%);
+    --border-strong: hsl(var(--hue) 30% 32%);
+    --text:          hsl(var(--hue) 40% 95%);
+    --text-soft:     hsl(var(--hue) 22% 70%);
+    --text-faint:    hsl(var(--hue) 18% 55%);
+
+    --accent:        hsl(var(--hue) 90% 62%);
+    --accent-2:      hsl(var(--hue2) 88% 58%);
+    --accent-soft:   hsla(var(--hue), 80%, 60%, 0.16);
+    --accent-strong: hsl(var(--hue) 95% 76%);
+    --accent-glow:   hsla(var(--hue), 90%, 60%, 0.35);
+
+    --success:#37D6A0;  --success-soft:hsla(160,60%,50%,0.15);
+    --warn:#E8B84B;     --warn-soft:hsla(42,80%,50%,0.14);
+    --warn-text:#E8C97A;
+    --danger:#FF7A72;   --danger-soft:hsla(4,80%,60%,0.16);
+    --shadow:0 1px 2px rgba(0,0,0,0.3), 0 8px 24px rgba(0,0,0,0.35);
+    --shadow-lg:0 12px 44px rgba(0,0,0,0.5);
+  }
+
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;}
   body{
@@ -37,337 +79,429 @@
     color:var(--text);
     -webkit-font-smoothing:antialiased;
     line-height:1.55;
+    transition:background .5s ease, color .35s ease;
+    overflow-x:hidden;
   }
   .mono{font-family:'IBM Plex Mono', ui-monospace, monospace;}
 
-  .wrap{
-    max-width:920px;
-    margin:0 auto;
-    padding:28px 20px 24px;
+  /* ---- แสงออโรร่าพื้นหลัง เคลื่อนไหวช้า ๆ ให้รู้สึก "มีชีวิต" ---- */
+  .aurora{ position:fixed; inset:0; z-index:-2; overflow:hidden; pointer-events:none; }
+  .aurora i{
+    position:absolute; display:block; border-radius:50%;
+    filter:blur(70px); opacity:.55;
+    will-change:transform;
+  }
+  .aurora i:nth-child(1){
+    width:46vw; height:46vw; left:-8vw; top:-14vw;
+    background:radial-gradient(circle at 30% 30%, hsla(var(--hue),95%,62%,.55), transparent 68%);
+    animation:float1 26s ease-in-out infinite;
+  }
+  .aurora i:nth-child(2){
+    width:40vw; height:40vw; right:-10vw; top:8vh;
+    background:radial-gradient(circle at 60% 40%, hsla(var(--hue2),95%,58%,.45), transparent 68%);
+    animation:float2 32s ease-in-out infinite;
+  }
+  .aurora i:nth-child(3){
+    width:52vw; height:52vw; left:22vw; bottom:-24vw;
+    background:radial-gradient(circle at 50% 50%, hsla(calc(var(--hue) + 24),92%,60%,.35), transparent 70%);
+    animation:float3 38s ease-in-out infinite;
+  }
+  [data-theme="dark"] .aurora i{ opacity:.38; }
+  @keyframes float1{ 0%,100%{transform:translate(0,0) scale(1);} 50%{transform:translate(6vw,5vh) scale(1.14);} }
+  @keyframes float2{ 0%,100%{transform:translate(0,0) scale(1);} 50%{transform:translate(-7vw,7vh) scale(1.1);} }
+  @keyframes float3{ 0%,100%{transform:translate(0,0) scale(1);} 50%{transform:translate(4vw,-6vh) scale(1.16);} }
+  @media (prefers-reduced-motion: reduce){
+    .aurora i{ animation:none !important; }
+    *{ animation-duration:.001s !important; transition-duration:.001s !important; }
   }
 
-  .topnav{
-    display:flex;
-    gap:10px;
-    margin-bottom:18px;
-    flex-wrap:wrap;
-  }
+  .wrap{ max-width:960px; margin:0 auto; padding:22px 20px 24px; position:relative; }
+
+  /* ---- แถบนำทางด้านบน ---- */
+  .topnav{ display:flex; gap:9px; margin-bottom:16px; flex-wrap:wrap; align-items:center; }
   .nav-item{
-    font-family:inherit;
-    font-size:13px;
-    font-weight:600;
+    font-family:inherit; font-size:13px; font-weight:600;
     color:var(--accent-strong);
     background:var(--accent-soft);
     border:1px solid transparent;
-    padding:9px 15px;
-    border-radius:9px;
-    cursor:pointer;
-    text-decoration:none;
-    display:inline-flex;
-    align-items:center;
-    gap:7px;
+    padding:9px 15px; border-radius:10px;
+    cursor:pointer; text-decoration:none;
+    display:inline-flex; align-items:center; gap:7px;
+    transition:transform var(--speed), box-shadow var(--speed), background var(--speed), border-color var(--speed);
   }
-  .nav-item:hover{background:#DBEBEA; border-color:var(--accent);}
+  .nav-item:hover{
+    background:var(--surface); border-color:var(--accent);
+    transform:translateY(-2px); box-shadow:0 6px 18px var(--accent-glow);
+  }
+  .nav-item:active{ transform:translateY(0) scale(.97); }
+  .nav-spacer{ flex:1; }
+
+  /* สวิตช์เลือกโทนสี */
+  .hue-dots{ display:inline-flex; gap:5px; align-items:center; padding:6px 9px;
+    background:var(--surface-glass); border:1px solid var(--border); border-radius:10px;
+    backdrop-filter:blur(8px); }
+  .hue-dot{
+    width:15px; height:15px; border-radius:50%; border:2px solid transparent;
+    cursor:pointer; padding:0; transition:transform var(--speed), border-color var(--speed);
+  }
+  .hue-dot:hover{ transform:scale(1.22); }
+  .hue-dot.active{ border-color:var(--text); transform:scale(1.16); }
 
   header.top{
-    display:flex;
-    justify-content:space-between;
-    align-items:flex-start;
-    gap:20px;
-    margin-bottom:16px;
-    flex-wrap:wrap;
+    display:flex; justify-content:space-between; align-items:flex-start;
+    gap:20px; margin-bottom:16px; flex-wrap:wrap;
   }
   .brand-eyebrow{
     font-family:'IBM Plex Mono', monospace;
-    font-size:11px;
-    letter-spacing:0.14em;
-    text-transform:uppercase;
-    color:var(--accent);
-    font-weight:600;
-    margin-bottom:6px;
+    font-size:11px; letter-spacing:0.14em; text-transform:uppercase;
+    color:var(--accent); font-weight:600; margin-bottom:6px;
   }
   h1{
-    font-size:21px;
-    font-weight:600;
-    margin:0 0 4px;
-    letter-spacing:-0.01em;
+    font-size:22px; font-weight:700; margin:0 0 4px; letter-spacing:-0.01em;
+    background:var(--grad); -webkit-background-clip:text; background-clip:text;
+    -webkit-text-fill-color:transparent;
   }
-  .subtitle{
-    font-size:13px;
-    color:var(--text-soft);
-    margin:0;
-  }
+  .subtitle{ font-size:13px; color:var(--text-soft); margin:0; }
+
   .sync-box{ text-align:right; }
   .sync-status-inline{
-    font-size:11.5px;
-    color:var(--text-soft);
-    display:inline-flex;
-    align-items:center;
-    gap:6px;
-    margin-left:4px;
-    padding-left:10px;
-    border-left:1px solid var(--border);
+    font-size:11.5px; color:var(--text-soft);
+    display:inline-flex; align-items:center; gap:6px;
+    margin-left:4px; padding-left:10px; border-left:1px solid var(--border);
   }
-  .sync-dot{ width:7px;height:7px; border-radius:50%; background:var(--text-faint); flex-shrink:0; }
-  .sync-dot.live{background:var(--success);}
+  .sync-dot{ width:8px;height:8px; border-radius:50%; background:var(--text-faint); flex-shrink:0; }
+  .sync-dot.live{background:var(--success); box-shadow:0 0 0 3px hsla(160,60%,45%,.2);}
   .sync-dot.err{background:var(--danger);}
   .sync-dot.loading{background:var(--warn); animation:pulse 1s infinite;}
   @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.35;}}
   .sync-btn{
-    font-family:inherit; font-size:12px; font-weight:500;
-    padding:7px 13px; border-radius:8px;
+    font-family:inherit; font-size:12px; font-weight:600;
+    padding:7px 13px; border-radius:9px;
     border:1px solid var(--border-strong); background:var(--surface); color:var(--text);
-    cursor:pointer;
+    cursor:pointer; transition:all var(--speed);
   }
-  .sync-btn:hover{background:var(--accent-soft); border-color:var(--accent);}
-  .sync-btn:disabled{opacity:.55; cursor:default;}
+  .sync-btn:hover{background:var(--accent-soft); border-color:var(--accent); transform:translateY(-1px);}
+  .sync-btn:disabled{opacity:.55; cursor:default; transform:none;}
   .sync-note{ font-size:11px; color:var(--danger); margin-top:4px; max-width:320px; text-align:right; margin-left:auto; }
-  .export-toolbar{
-    display:flex; align-items:center; gap:6px; justify-content:flex-end;
-    flex-wrap:wrap;
-  }
+
+  .export-toolbar{ display:flex; align-items:center; gap:6px; justify-content:flex-end; flex-wrap:wrap; }
   .export-toolbar-label{ font-size:10.5px; color:var(--text-soft); }
   .export-btn{
     font-family:inherit; font-size:11px; font-weight:600;
-    padding:5px 9px; border-radius:7px;
+    padding:5px 10px; border-radius:8px;
     border:1px solid var(--border-strong); background:var(--surface); color:var(--text);
-    cursor:pointer;
+    cursor:pointer; transition:all var(--speed);
   }
-  .export-btn:hover{ background:var(--accent-soft); border-color:var(--accent); }
+  .export-btn:hover{ background:var(--accent-soft); border-color:var(--accent); transform:translateY(-1px); }
+  .export-btn:active{ transform:scale(.95); }
   .export-bar{
     display:flex; align-items:center; gap:6px; flex-wrap:wrap;
     margin-top:12px; padding-top:10px; border-top:1px dashed var(--border);
   }
   .export-label{ font-size:11px; color:var(--text-soft); }
 
-  .metric-row{
-    display:grid;
-    grid-template-columns:repeat(4,1fr);
-    gap:10px;
-    margin-bottom:18px;
-  }
+  /* ---- การ์ดตัวเลขสรุปด้านบน ---- */
+  .metric-row{ display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:18px; }
   .metric-card{
-    background:var(--surface);
+    background:var(--surface-glass);
+    backdrop-filter:blur(10px);
     border:1px solid var(--border);
     border-radius:var(--radius);
     box-shadow:var(--shadow);
-    padding:12px 14px;
+    padding:13px 15px;
+    position:relative; overflow:hidden;
+    transition:transform var(--speed), box-shadow var(--speed), border-color var(--speed);
   }
+  .metric-card::before{
+    content:""; position:absolute; left:0; top:0; bottom:0; width:3px; background:var(--grad);
+    opacity:.9;
+  }
+  .metric-card:hover{ transform:translateY(-3px); box-shadow:var(--shadow-lg); border-color:var(--accent); }
   .metric-num{
     font-family:'IBM Plex Mono', monospace;
-    font-size:20px; font-weight:600; color:var(--accent-strong); line-height:1.1;
+    font-size:21px; font-weight:700; color:var(--accent-strong); line-height:1.1;
   }
   .metric-label{ font-size:10.5px; color:var(--text-soft); margin-top:4px; }
+  .metric-spark{ margin-top:6px; display:block; width:100%; height:26px; }
+  .metric-spark path.line{ fill:none; stroke:var(--accent); stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+  .metric-spark path.area{ fill:var(--accent-soft); stroke:none; }
+  .metric-spark circle{ fill:var(--accent); }
 
-  /* Chat panel */
+  /* ---- แผงแชท ---- */
   .chat-card{
-    background:var(--surface);
+    background:var(--surface-glass);
+    backdrop-filter:blur(14px);
     border:1px solid var(--border);
-    border-radius:14px;
-    box-shadow:var(--shadow);
-    display:flex;
-    flex-direction:column;
-    height:60vh;
-    min-height:420px;
-    overflow:hidden;
+    border-radius:18px;
+    box-shadow:var(--shadow-lg);
+    display:flex; flex-direction:column;
+    height:62vh; min-height:430px; overflow:hidden;
+    position:relative;
   }
-  .chat-scroll{
-    flex:1;
-    overflow-y:auto;
-    padding:20px;
-    display:flex;
-    flex-direction:column;
-    gap:16px;
+  .chat-card::after{
+    content:""; position:absolute; inset:0; border-radius:18px; pointer-events:none;
+    border:1px solid transparent;
+    background:var(--grad) border-box;
+    -webkit-mask:linear-gradient(#000 0 0) padding-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite:xor; mask-composite:exclude;
+    opacity:.5;
   }
-  .msg-row{ display:flex; }
+  .chat-scroll{ flex:1; overflow-y:auto; padding:20px; display:flex; flex-direction:column; gap:16px; scroll-behavior:smooth; }
+  .chat-scroll::-webkit-scrollbar{ width:9px; }
+  .chat-scroll::-webkit-scrollbar-thumb{ background:var(--border-strong); border-radius:6px; }
+  .chat-scroll::-webkit-scrollbar-thumb:hover{ background:var(--accent); }
+
+  .msg-row{ display:flex; animation:msgIn .32s cubic-bezier(.21,.9,.3,1.02) both; }
+  @keyframes msgIn{ from{opacity:0; transform:translateY(10px) scale(.985);} to{opacity:1; transform:none;} }
   .msg-row.user{ justify-content:flex-end; }
   .msg-row.assistant{ justify-content:flex-start; }
-  .bubble{
-    max-width:86%;
-    border-radius:12px;
-    padding:11px 14px;
-    font-size:13.5px;
-    line-height:1.6;
-  }
+  .bubble{ max-width:86%; border-radius:14px; padding:12px 15px; font-size:13.5px; line-height:1.6; }
   .bubble.user{
-    background:var(--accent);
-    color:#fff;
-    border-bottom-right-radius:3px;
+    background:var(--grad); color:#fff; border-bottom-right-radius:4px;
+    box-shadow:0 4px 16px var(--accent-glow);
   }
   .bubble.assistant{
-    background:#F6F5F1;
+    background:var(--surface);
     border:1px solid var(--border);
-    border-bottom-left-radius:3px;
+    border-bottom-left-radius:4px;
     width:100%;
+    box-shadow:var(--shadow);
   }
-  .filter-chips{
-    display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px;
-  }
+
+  /* ตัวบ่งชี้ "กำลังค้นข้อมูล" */
+  .typing{ display:inline-flex; align-items:center; gap:8px; font-size:12.5px; color:var(--text-soft); }
+  .typing b{ display:inline-flex; gap:4px; }
+  .typing b i{ width:6px; height:6px; border-radius:50%; background:var(--accent); display:block; animation:blink 1.1s infinite; }
+  .typing b i:nth-child(2){ animation-delay:.16s; }
+  .typing b i:nth-child(3){ animation-delay:.32s; }
+  @keyframes blink{ 0%,80%,100%{ transform:scale(.6); opacity:.35; } 40%{ transform:scale(1); opacity:1; } }
+
+  .filter-chips{ display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px; }
   .filter-chip{
     font-size:11px; font-weight:600;
     background:var(--accent-soft); color:var(--accent-strong);
-    padding:3px 9px; border-radius:20px;
+    padding:3px 10px; border-radius:20px;
   }
-  .ans-title{ font-weight:600; font-size:14px; margin-bottom:6px; }
-  .ans-stats{
-    display:flex; flex-wrap:wrap; gap:10px;
-    margin:8px 0 12px;
+  .filter-chip.fuzzy{ background:var(--warn-soft); color:var(--warn-text); }
+
+  .ans-title{ font-weight:700; font-size:14.5px; margin-bottom:6px; }
+
+  /* ประโยคสรุปภาษาคน (สร้างจากตัวเลขจริง ไม่ใช่ AI แต่งข้อความ) */
+  .narrative{
+    font-size:13px; line-height:1.75; margin:2px 0 10px;
+    padding:10px 12px; border-radius:10px;
+    background:var(--accent-soft); color:var(--text);
+    border-left:3px solid var(--accent);
   }
+  .narrative b{ color:var(--accent-strong); }
+
+  .ans-stats{ display:flex; flex-wrap:wrap; gap:9px; margin:8px 0 12px; }
   .ans-stat{
-    background:var(--surface); border:1px solid var(--border);
-    border-radius:8px; padding:7px 11px; min-width:84px;
+    background:var(--surface-2); border:1px solid var(--border);
+    border-radius:10px; padding:8px 12px; min-width:88px;
+    transition:transform var(--speed), border-color var(--speed);
+    animation:popIn .35s cubic-bezier(.2,.9,.3,1.1) both;
   }
-  .ans-stat .n{ font-family:'IBM Plex Mono', monospace; font-weight:600; font-size:15px; color:var(--accent-strong); }
+  .ans-stat:hover{ transform:translateY(-2px); border-color:var(--accent); }
+  @keyframes popIn{ from{opacity:0; transform:translateY(6px) scale(.95);} to{opacity:1; transform:none;} }
+  .ans-stat .n{ font-family:'IBM Plex Mono', monospace; font-weight:700; font-size:16px; color:var(--accent-strong); }
   .ans-stat .l{ font-size:10px; color:var(--text-soft); margin-top:2px; }
+
+  .sec-label{ font-size:11.5px; font-weight:700; margin:12px 0 5px; color:var(--text-soft); letter-spacing:.02em; }
+
   .breakdown-row{
     display:flex; justify-content:space-between; align-items:center;
-    font-size:12px; padding:4px 0; border-bottom:1px dashed var(--border);
+    font-size:12px; padding:5px 0; border-bottom:1px dashed var(--border);
   }
   .breakdown-row:last-child{ border-bottom:none; }
-  .breakdown-bar-track{ flex:1; height:5px; background:#EDECE7; border-radius:3px; margin:0 10px; overflow:hidden;}
-  .breakdown-bar-fill{ height:100%; background:var(--accent); border-radius:3px; }
-  .record-item{
-    border:1px solid var(--border);
-    border-radius:9px;
-    padding:9px 11px;
-    margin-top:8px;
-    background:var(--surface);
+  .breakdown-bar-track{ flex:1; height:6px; background:var(--accent-soft); border-radius:4px; margin:0 10px; overflow:hidden;}
+  .breakdown-bar-fill{
+    height:100%; background:var(--grad); border-radius:4px;
+    animation:growBar .7s cubic-bezier(.2,.9,.25,1) both;
   }
-  .record-top{ display:flex; justify-content:space-between; gap:8px; font-size:11px; color:var(--text-soft); margin-bottom:3px; }
+  @keyframes growBar{ from{ transform:scaleX(0); transform-origin:left; } to{ transform:scaleX(1); } }
+
+  .record-item{
+    border:1px solid var(--border); border-radius:11px;
+    padding:10px 12px; margin-top:8px; background:var(--surface-2);
+    transition:border-color var(--speed), transform var(--speed), box-shadow var(--speed);
+  }
+  .record-item:hover{ border-color:var(--accent); transform:translateX(3px); box-shadow:0 4px 14px var(--accent-glow); }
+  .record-top{ display:flex; justify-content:space-between; gap:8px; font-size:11px; color:var(--text-soft); margin-bottom:3px; flex-wrap:wrap; }
   .record-top .rd{ font-family:'IBM Plex Mono', monospace; font-weight:600; color:var(--accent-strong); }
   .record-detail{ font-size:12.5px; color:var(--text); }
   .record-note{ font-size:11px; color:var(--text-soft); margin-top:3px; }
+  .record-item .hl{ background:hsla(var(--hue),95%,60%,.22); border-radius:3px; padding:0 2px; font-weight:600; }
+  .record-flag{ font-size:10px; font-weight:700; padding:1px 7px; border-radius:20px; background:var(--danger-soft); color:var(--danger); }
   .more-note{ font-size:11.5px; color:var(--text-soft); margin-top:8px; }
   .empty-note{ font-size:13px; color:var(--text-soft); }
-  .corr-hedge{
-    margin-top:10px; padding:8px 10px;
-    background:var(--warn-soft); border-left:3px solid var(--warn);
-    border-radius:6px; font-size:11px; color:#7A5A15; line-height:1.6;
+
+  /* กล่อง "ข้อสังเกตจากข้อมูล" */
+  .insight-box{
+    margin-top:12px; padding:11px 13px; border-radius:11px;
+    background:var(--surface-2); border:1px dashed var(--border-strong);
   }
+  .insight-box .ib-title{ font-size:11.5px; font-weight:700; color:var(--accent-strong); margin-bottom:6px; display:flex; align-items:center; gap:6px; }
+  .insight-box ul{ margin:0; padding-left:18px; font-size:12.5px; line-height:1.8; }
+  .insight-box li::marker{ color:var(--accent); }
+
+  /* "คุณหมายถึง...?" */
+  .dym{ margin-top:10px; }
+  .dym-label{ font-size:11.5px; color:var(--text-soft); margin-bottom:6px; }
+  .dym-chip{
+    font-family:inherit; font-size:12px; font-weight:600;
+    background:var(--accent-soft); color:var(--accent-strong);
+    border:1px solid transparent; border-radius:20px;
+    padding:5px 13px; margin:0 6px 6px 0; cursor:pointer;
+    transition:all var(--speed);
+  }
+  .dym-chip:hover{ background:var(--surface); border-color:var(--accent); transform:translateY(-2px); }
+
+  .corr-hedge{
+    margin-top:10px; padding:9px 11px;
+    background:var(--warn-soft); border-left:3px solid var(--warn);
+    border-radius:8px; font-size:11px; color:var(--warn-text); line-height:1.65;
+  }
+
   .timeline{ margin-top:8px; padding-left:4px; }
   .tl-item{ display:flex; gap:10px; position:relative; padding-bottom:14px; }
   .tl-item:not(:last-child)::before{
-    content:""; position:absolute; left:4px; top:14px; bottom:0; width:1px; background:var(--border-strong);
+    content:""; position:absolute; left:4px; top:14px; bottom:0; width:2px;
+    background:linear-gradient(var(--accent), transparent);
   }
-  .tl-dot{ width:9px; height:9px; border-radius:50%; background:var(--accent); margin-top:4px; flex-shrink:0; }
+  .tl-dot{ width:10px; height:10px; border-radius:50%; background:var(--grad); margin-top:4px; flex-shrink:0; box-shadow:0 0 0 3px var(--accent-soft); }
   .tl-content{ flex:1; }
   .tl-date{ font-family:'IBM Plex Mono', monospace; font-size:11px; font-weight:600; color:var(--accent-strong); }
   .tl-text{ font-size:12.5px; color:var(--text); margin-top:2px; }
-  .month-overview-list{ display:flex; flex-direction:column; gap:4px; }
+
+  .month-overview-list{ display:flex; flex-direction:column; gap:5px; }
   .month-row-btn{
     display:flex; align-items:center; gap:10px;
     width:100%; text-align:left;
-    font-family:inherit; font-size:12.5px;
-    background:var(--surface); border:1px solid var(--border);
-    border-radius:8px; padding:8px 10px; cursor:pointer;
+    font-family:inherit; font-size:12.5px; color:var(--text);
+    background:var(--surface-2); border:1px solid var(--border);
+    border-radius:10px; padding:8px 11px; cursor:pointer;
+    transition:all var(--speed);
   }
-  .month-row-btn:hover{ background:var(--accent-soft); border-color:var(--accent); }
-  .month-row-btn .mr-label{ min-width:76px; font-weight:600; }
+  .month-row-btn:hover{ background:var(--accent-soft); border-color:var(--accent); transform:translateX(3px); }
+  .month-row-btn .mr-label{ min-width:80px; font-weight:600; }
   .month-row-btn .mr-extra{
     font-family:'IBM Plex Mono', monospace; font-size:11px; color:var(--text-soft);
     padding-left:8px; border-left:1px solid var(--border); white-space:nowrap;
   }
   .month-row-btn .mr-extra.mr-success{ color:var(--success); font-weight:600; }
-  @media (max-width:640px){
-    .month-row-btn{ flex-wrap:wrap; }
-    .month-row-btn .breakdown-bar-track{ order:5; flex-basis:100%; margin-top:4px; }
+
+  /* ตารางความถี่รายวันในสัปดาห์ */
+  .heat-row{ display:flex; gap:6px; margin-top:8px; flex-wrap:wrap; }
+  .heat-cell{
+    flex:1; min-width:52px; text-align:center; border-radius:10px; padding:9px 4px;
+    border:1px solid var(--border); background:var(--accent-soft);
   }
+  .heat-cell .hc-d{ font-size:11px; color:var(--text-soft); }
+  .heat-cell .hc-n{ font-family:'IBM Plex Mono',monospace; font-weight:700; font-size:15px; color:var(--accent-strong); }
+
+  .risk-row{
+    display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+    font-size:12.5px; padding:8px 10px; margin-top:6px;
+    border:1px solid var(--border); border-left:3px solid var(--warn);
+    border-radius:9px; background:var(--surface-2);
+  }
+  .risk-row .rr-name{ font-weight:700; color:var(--accent-strong); }
+  .risk-row .rr-meta{ font-size:11px; color:var(--text-soft); }
 
   .chat-input-row{
     border-top:1px solid var(--border);
-    padding:12px 16px;
-    display:flex;
-    gap:8px;
-    background:#FCFCFB;
+    padding:12px 16px; display:flex; gap:8px;
+    background:var(--surface-2);
   }
   .chat-input{
-    flex:1;
-    border:1px solid var(--border-strong);
-    border-radius:9px;
-    padding:10px 13px;
-    font-family:inherit;
-    font-size:13.5px;
-    resize:none;
-    outline:none;
+    flex:1; border:1px solid var(--border-strong); border-radius:11px;
+    padding:10px 13px; font-family:inherit; font-size:13.5px;
+    resize:none; outline:none; background:var(--surface); color:var(--text);
+    transition:border-color var(--speed), box-shadow var(--speed);
   }
-  .chat-input:focus{ border-color:var(--accent); }
+  .chat-input:focus{ border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-glow); }
   .send-btn{
-    background:var(--accent);
-    color:#fff;
-    border:none;
-    border-radius:9px;
-    padding:0 18px;
-    font-weight:600;
-    font-size:13.5px;
-    cursor:pointer;
+    background:var(--grad); color:#fff; border:none; border-radius:11px;
+    padding:0 20px; font-weight:700; font-size:13.5px; cursor:pointer;
+    box-shadow:0 4px 14px var(--accent-glow);
+    transition:transform var(--speed), box-shadow var(--speed), filter var(--speed);
   }
-  .send-btn:hover{ background:var(--accent-strong); }
-  .send-btn:disabled{ opacity:.5; cursor:default; }
+  .send-btn:hover{ transform:translateY(-2px); box-shadow:0 8px 22px var(--accent-glow); filter:brightness(1.06); }
+  .send-btn:active{ transform:scale(.96); }
+  .send-btn:disabled{ opacity:.5; cursor:default; transform:none; }
 
   .mic-btn, .mute-btn{
-    flex-shrink:0;
-    width:38px; height:38px;
-    border-radius:9px;
-    border:1px solid var(--border-strong);
-    background:var(--surface);
-    font-size:16px;
-    cursor:pointer;
+    flex-shrink:0; width:40px; height:40px; border-radius:11px;
+    border:1px solid var(--border-strong); background:var(--surface);
+    font-size:16px; cursor:pointer;
     display:flex; align-items:center; justify-content:center;
-    transition:background .15s, border-color .15s;
+    transition:all var(--speed);
   }
-  .mic-btn:hover, .mute-btn:hover{ background:var(--accent-soft); border-color:var(--accent); }
-  .mic-btn:disabled, .mute-btn:disabled{ opacity:.4; cursor:not-allowed; }
+  .mic-btn:hover, .mute-btn:hover{ background:var(--accent-soft); border-color:var(--accent); transform:translateY(-2px); }
+  .mic-btn:disabled, .mute-btn:disabled{ opacity:.4; cursor:not-allowed; transform:none; }
   .mic-btn.listening{
-    background:var(--danger-soft);
-    border-color:var(--danger);
+    background:var(--danger-soft); border-color:var(--danger);
     animation:mic-pulse 1.1s infinite;
   }
   @keyframes mic-pulse{
-    0%,100%{ box-shadow:0 0 0 0 rgba(181,80,74,0.35); }
-    50%{ box-shadow:0 0 0 6px rgba(181,80,74,0); }
+    0%,100%{ box-shadow:0 0 0 0 rgba(210,69,63,0.4); }
+    50%{ box-shadow:0 0 0 8px rgba(210,69,63,0); }
   }
   .mute-btn.muted{ background:var(--warn-soft); border-color:var(--warn); }
-  .voice-status{
-    font-size:11px; color:var(--text-soft);
-    padding:0 16px 10px;
-    min-height:14px;
-  }
+  .voice-status{ font-size:11px; color:var(--text-soft); padding:0 16px 10px; min-height:14px; }
 
-  .examples{
-    display:flex; flex-wrap:wrap; gap:7px; margin:12px 0 0;
-  }
+  .examples{ display:flex; flex-wrap:wrap; gap:7px; margin:14px 0 0; }
   .example-chip{
     font-family:inherit; font-size:11.5px;
-    background:var(--surface); border:1px solid var(--border-strong);
-    color:var(--text); padding:6px 12px; border-radius:20px; cursor:pointer;
+    background:var(--surface-glass); backdrop-filter:blur(6px);
+    border:1px solid var(--border-strong);
+    color:var(--text); padding:7px 13px; border-radius:20px; cursor:pointer;
+    transition:all var(--speed);
   }
-  .example-chip:hover{ background:var(--accent-soft); border-color:var(--accent); }
+  .example-chip:hover{ background:var(--accent-soft); border-color:var(--accent); transform:translateY(-2px); box-shadow:0 5px 14px var(--accent-glow); }
+  .example-chip:active{ transform:scale(.95); }
 
-  .quick-search-panel{
-    margin-top:16px; padding-top:14px; border-top:1px solid var(--border);
-  }
-  .quick-search-label{
-    font-size:11px; font-weight:600; color:var(--text-soft);
-    letter-spacing:0.02em; margin-bottom:8px;
-  }
+  .quick-search-panel{ margin-top:18px; padding-top:15px; border-top:1px solid var(--border); }
+  .quick-search-label{ font-size:11px; font-weight:700; color:var(--text-soft); letter-spacing:0.02em; margin-bottom:9px; }
   .quick-search{ display:flex; flex-wrap:wrap; gap:7px; }
   .qs-chip{
     font-family:inherit; font-size:11.5px;
-    background:var(--surface); border:1px solid var(--border-strong);
-    color:var(--text); padding:6px 12px; border-radius:20px; cursor:pointer;
-    display:inline-flex; align-items:center; gap:5px;
+    background:var(--surface-glass); backdrop-filter:blur(6px);
+    border:1px solid var(--border-strong);
+    color:var(--text); padding:7px 13px; border-radius:20px; cursor:pointer;
+    display:inline-flex; align-items:center; gap:6px;
+    transition:all var(--speed);
   }
-  .qs-chip:hover{ background:var(--accent-soft); border-color:var(--accent); }
+  .qs-chip:hover{ background:var(--accent-soft); border-color:var(--accent); transform:translateY(-2px); }
   .qs-chip .qs-count{
-    font-family:'IBM Plex Mono', monospace; font-size:10px; font-weight:600;
-    background:var(--accent-soft); color:var(--accent-strong);
-    padding:1px 6px; border-radius:10px;
+    font-family:'IBM Plex Mono', monospace; font-size:10px; font-weight:700;
+    background:var(--grad); color:#fff; padding:1px 7px; border-radius:10px;
   }
 
+  /* ข้อความแจ้งเตือนมุมจอ */
+  .toast-wrap{ position:fixed; right:18px; bottom:18px; z-index:60; display:flex; flex-direction:column; gap:8px; }
+  .toast{
+    background:var(--surface); border:1px solid var(--border);
+    border-left:3px solid var(--accent);
+    box-shadow:var(--shadow-lg); border-radius:10px;
+    padding:10px 14px; font-size:12.5px; color:var(--text);
+    animation:toastIn .3s cubic-bezier(.2,.9,.3,1.1) both;
+    max-width:320px;
+  }
+  .toast.ok{ border-left-color:var(--success); }
+  .toast.err{ border-left-color:var(--danger); }
+  .toast.out{ animation:toastOut .28s ease forwards; }
+  @keyframes toastIn{ from{opacity:0; transform:translateY(12px) scale(.96);} to{opacity:1; transform:none;} }
+  @keyframes toastOut{ to{opacity:0; transform:translateX(16px);} }
+
   .foot-note{ margin-top:14px; font-size:11px; color:var(--text-faint); text-align:center; }
+  .kbd{
+    font-family:'IBM Plex Mono',monospace; font-size:10px; border:1px solid var(--border-strong);
+    border-bottom-width:2px; border-radius:5px; padding:1px 5px; color:var(--text-soft); background:var(--surface);
+  }
   .site-footer{
-    margin-top:20px; padding-top:14px;
-    border-top:1px solid var(--border);
+    margin-top:20px; padding-top:14px; border-top:1px solid var(--border);
     text-align:center; font-size:11px; color:var(--text-faint); line-height:1.8;
   }
   .site-footer a{ color:var(--accent); text-decoration:none; }
@@ -377,10 +511,18 @@
     .metric-row{ grid-template-columns:repeat(2,1fr); }
     .chat-card{ height:66vh; }
     .bubble{ max-width:94%; }
+    .month-row-btn{ flex-wrap:wrap; }
+    .month-row-btn .breakdown-bar-track{ order:5; flex-basis:100%; margin-top:4px; }
+    .sync-box{ text-align:left; width:100%; }
+    .export-toolbar{ justify-content:flex-start; }
+    .sync-note{ text-align:left; margin-left:0; }
   }
 </style>
 </head>
 <body>
+
+<div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div>
+<div class="toast-wrap" id="toastWrap"></div>
 
 <div class="wrap">
 
@@ -391,6 +533,9 @@
     <a class="nav-item" href="https://panya-jeerachat.github.io/dwms-calendar/" target="_blank" rel="noopener">
       <span>📅</span>ปฏิทินกิจกรรมโสตทัศนูปกรณ์
     </a>
+    <span class="nav-spacer"></span>
+    <span class="hue-dots" id="hueDots" title="เลือกโทนสีฟ้า"></span>
+    <button class="nav-item" id="themeBtn" type="button" title="สลับโหมดสว่าง / กลางคืน"><span>🌙</span><span id="themeLabel">กลางคืน</span></button>
   </nav>
 
   <header class="top">
@@ -418,7 +563,7 @@
     <div class="chat-scroll" id="chatScroll"></div>
     <div class="chat-input-row">
       <button class="mic-btn" id="micBtn" type="button" title="พูดถาม (ไมโครโฟน)">🎤</button>
-      <textarea class="chat-input" id="chatInput" rows="1" placeholder="เช่น EN1-204"></textarea>
+      <textarea class="chat-input" id="chatInput" rows="1" placeholder="เช่น EN1-204 · สรุปเดือนกรกฎาคม · ห้องไหนเสี่ยงซ้ำ · ช่วยอะไรได้บ้าง"></textarea>
       <button class="mute-btn" id="muteBtn" type="button" title="ปิด/เปิดเสียงตอบ">🔊</button>
       <button class="send-btn" id="sendBtn">ถาม</button>
     </div>
@@ -432,7 +577,7 @@
     <div class="quick-search" id="quickSearch"></div>
   </div>
 
-  <p class="foot-note">ระบบค้นหา/สรุปข้อมูลอัตโนมัติจากคำถามภาษาไทย อาจตีความคลาดเคลื่อนได้หากคำถามกำกวมมาก — ตรวจสอบ "ตัวกรองที่ใช้" ที่แสดงในทุกคำตอบเพื่อยืนยันความถูกต้อง</p>
+  <p class="foot-note">ระบบค้นหา/สรุปข้อมูลอัตโนมัติจากคำถามภาษาไทย รองรับการสะกดผิด/เสียงเพี้ยน (Fuzzy Matching) อาจตีความคลาดเคลื่อนได้หากคำถามกำกวมมาก</p>
 
   <footer class="site-footer">
     <p>© 2569 คณะวิศวกรรมศาสตร์ มหาวิทยาลัยมหาสารคาม</p>
@@ -490,7 +635,13 @@
     // คำกระตุ้นโหมดวิเคราะห์ใหม่ (ไม่ควรหลุดไปเป็นคำค้นเนื้อหาทั่วไป)
     "สร้าง","timeline","ไทม์ไลน์","จัดลำดับเหตุการณ์","kpi","ผู้บริหาร","executive",
     "เปรียบเทียบ","แนวโน้ม","เชื่อมโยง","ความสัมพันธ์","วิเคราะห์","ระหว่าง","รายเดือน","ผล",
-    "วันที่","ไม่","ปิด","สาย","ข้อมูล","รอบ","วงรอบ","การประเมิน","ประเมิน","ทุกเดือน","แต่ละเดือน"
+    "วันที่","ไม่","ปิด","สาย","ข้อมูล","รอบ","วงรอบ","การประเมิน","ประเมิน","ทุกเดือน","แต่ละเดือน",
+    // คำกระตุ้นโหมดใหม่ (ความเสี่ยง/วันในสัปดาห์/งานหนัก/คู่มือ) — กันไม่ให้หลุดไปเป็นคำค้นเนื้อหา
+    "เสี่ยง","เฝ้าระวัง","ซ้ำซาก","ซ้ำซ้อน","ป้องกัน","ทำนาย","พยากรณ์","watchlist","น่าจะเกิดอีก",
+    "วันไหน","วันในสัปดาห์","รายวัน","วันอะไร","หนักที่สุด","ภาระงานสูงสุด","ภาระงานมากที่สุด",
+    "ช่วยอะไรได้บ้าง","ทำอะไรได้บ้าง","คำสั่ง","ใช้ยังไง","ใช้อย่างไร","วิธีใช้","help","คู่มือ",
+    "มากที่สุด","บ่อยที่สุด","เยอะที่สุด","อันดับ","จัดอันดับ","โปรด","กรุณา","ขอ","ดังนี้","ที่สุด",
+    "เหตุการณ์","จัดลำดับ","เยอะ","น้อย","สูงสุด","ต่ำสุด","เข้า"
   ]);
   monthNamesTh.forEach(w=>STOPWORDS.add(w));
   monthAbbrTh.forEach(w=>STOPWORDS.add(w));
@@ -639,12 +790,41 @@
     const totalMinutes = records.length * 45;
     const dates = records.map(r=>r.date).sort();
     const range = dates.length ? (fmtDateTh(dates[0]) + " – " + fmtDateTh(dates[dates.length-1])) : "-";
+    const series = monthlySeries();
+    const spark = sparklineSvg(series.map(s=>s[1].count));
+    const lastM = series.length ? series[series.length-1] : null;
     elMetricRow.innerHTML = `
       <div class="metric-card"><div class="metric-num">${total}</div><div class="metric-label">รายการภาระงานทั้งหมด</div></div>
       <div class="metric-card"><div class="metric-num">${fmtNum(totalWorkload)}</div><div class="metric-label">รวมภาระงาน (หน่วย)</div></div>
       <div class="metric-card"><div class="metric-num">${fmtNum(totalMinutes)}</div><div class="metric-label">เวลาให้บริการลดลง (นาที)</div></div>
-      <div class="metric-card" style="font-size:11px; display:flex; align-items:center; color:var(--text-soft);">${range}</div>
+      <div class="metric-card">
+        <div class="metric-num" style="font-size:15px;">${lastM ? lastM[1].count + " งาน" : "-"}</div>
+        <div class="metric-label">แนวโน้ม ${series.length} เดือน · ${escapeHtml(range)}</div>
+        ${spark}
+      </div>
     `;
+    animateNumbers(elMetricRow);
+  }
+
+  // กราฟเส้นจิ๋วแสดงแนวโน้มจำนวนงานรายเดือน (วาดเป็น SVG ตรง ๆ ไม่ต้องพึ่งไลบรารีภายนอก)
+  function sparklineSvg(values){
+    if(!values || values.length < 2) return "";
+    const w = 120, h = 26, pad = 2;
+    const max = Math.max(...values), min = Math.min(...values);
+    const span = (max - min) || 1;
+    const pts = values.map((v,i)=>{
+      const x = pad + (i/(values.length-1)) * (w - pad*2);
+      const y = h - pad - ((v - min)/span) * (h - pad*2);
+      return [x, y];
+    });
+    const line = pts.map((p,i)=> (i?"L":"M") + p[0].toFixed(1) + " " + p[1].toFixed(1)).join(" ");
+    const area = line + ` L${(w-pad).toFixed(1)} ${h} L${pad} ${h} Z`;
+    const last = pts[pts.length-1];
+    return `<svg class="metric-spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-hidden="true">
+      <path class="area" d="${area}"></path>
+      <path class="line" d="${line}"></path>
+      <circle cx="${last[0].toFixed(1)}" cy="${last[1].toFixed(1)}" r="2.2"></circle>
+    </svg>`;
   }
 
   // ================= QUERY PARSING =================
@@ -736,8 +916,9 @@
         matched = tryMatch(sttFixed);
       }
     }
-    if(!matched.length){
-      // ลองแบบตัดขีด/จุด/จุลภาคออกด้วย เผื่อ Speech-to-Text ไม่ใส่ขีดระหว่างเลข เช่น "EN1 202" แทน "EN1-202"
+    // ลองแบบตัดขีด/จุด/จุลภาคออกเสมอ เผื่อผู้ใช้พิมพ์/พูดโดยไม่ใส่ขีด เช่น "EN1 202" แทน "EN1-202"
+    // (เดิมทำเฉพาะตอนยังไม่เจออะไรเลย ทำให้ "en1 204" ไปหยุดที่อาคาร "EN1" แทนที่จะได้ห้อง "EN1-204")
+    {
       const superCompact = qCompact.replace(/[\-.,]/g,"");
       roomsList.forEach(room=>{
         const roomSuperCompact = room.toUpperCase().replace(/\s+/g,"").replace(/[\-.,]/g,"");
@@ -766,8 +947,30 @@
         return true;
       });
     }
+
+    // ถ้าได้แค่ระดับ "อาคาร" (EN1) ทั้งที่คำถามมีเลขห้อง 3 หลักอยู่ด้วย แปลว่าเลขห้องน่าจะพิมพ์/พูดผิด
+    // เช่น "en1 240" (สลับเลขจาก 204) — ให้เดาห้องที่ใกล้เคียงที่สุดแทนการตอบทั้งอาคาร
+    if(matched.length === 1 && /^EN\d+$/i.test(matched[0].replace(/\s+/g,"")) && /\d{3}/.test(qCompact)){
+      const fzRoom = fuzzyFindRoom(qOriginal);
+      if(fzRoom && fzRoom.score >= 0.78 && fzRoom.room.replace(/\s+/g,"") !== matched[0].replace(/\s+/g,"")){
+        lastRoomFuzzy = fzRoom;
+        matched = [fzRoom.room];
+      }
+    }
+
+    // ชั้นสุดท้าย: ถ้ายังไม่เจอเลย ให้เดาห้องที่ "ใกล้เคียงที่สุด" ด้วย Fuzzy Matching
+    // ครอบคลุมกรณีเลขสลับ (EN1-024), ขาดขีด, พูดแล้วได้ยินเป็นตัวอื่น หรือพิมพ์แค่เลขห้องลอย ๆ
+    if(!matched.length){
+      const fz = fuzzyFindRoom(qOriginal);
+      if(fz){
+        lastRoomFuzzy = fz;
+        matched = [fz.room];
+      }
+    }
     return matched;
   }
+  // เก็บผลการเดาห้องล่าสุดไว้แจ้งผู้ใช้ว่าเป็น "ผลลัพธ์ใกล้เคียง" ไม่ใช่การจับคู่ตรงตัว
+  let lastRoomFuzzy = null;
 
   // อาคาร: ข้อมูลไม่มีคอลัมน์อาคารแยก จึงดึงจากรหัสห้อง (เช่น "EN1-202" -> "EN1")
   // ถ้าห้องไม่ใช่รูปแบบ EN+เลข ให้ถือว่าชื่อห้อง/สถานที่ทั้งหมดคือกลุ่มของมันเอง
@@ -825,8 +1028,14 @@
                        qNorm.indexOf("ทำอะไร") !== -1 || qNorm.indexOf("เรื่องอะไร") !== -1;
     const wantsLatest = qNorm.indexOf("ล่าสุด") !== -1 || qNorm.indexOf("เมื่อไหร่") !== -1 ||
                          qNorm.indexOf("เมื่อไร") !== -1;
+    const has = (...ws) => ws.some(w => qNorm.indexOf(w) !== -1);
     let main = "list";
-    if(qNorm.indexOf("วิเคราะห์ข้อมูล") !== -1) main = "fullAnalysis";
+    if(has("ช่วยอะไรได้บ้าง","ทำอะไรได้บ้าง","คำสั่ง","ใช้ยังไง","ใช้อย่างไร","วิธีใช้","help","คู่มือ")) main = "help";
+    else if(has("เสี่ยง","เฝ้าระวัง","ซ้ำซาก","ซ้ำซ้อน","น่าจะเกิดอีก","ป้องกัน","ทำนาย","พยากรณ์","watchlist")) main = "risk";
+    else if(has("วันไหน","วันในสัปดาห์","รายวัน","วันอะไร","วันจันทร์ถึง")) main = "weekday";
+    else if(has("ไม่สำเร็จ","ล้มเหลว","ค้างอยู่","ยังไม่เสร็จ","ปัญหาที่แก้ไม่ได้")) main = "failed";
+    else if(has("หนักที่สุด","ภาระงานสูงสุด","ภาระงานมากที่สุด","งานใหญ่ที่สุด","ใช้เวลานานที่สุด")) main = "heaviest";
+    else if(qNorm.indexOf("วิเคราะห์ข้อมูล") !== -1) main = "fullAnalysis";
     else if(/รอบ.{0,15}?([12๑๒])/.test(qNorm)) main = "evalCycle";
     else if(qNorm.indexOf("kpi") !== -1) main = "kpi";
     else if(qNorm.indexOf("ผู้บริหาร") !== -1 || qNorm.indexOf("executive") !== -1 ||
@@ -849,8 +1058,34 @@
   }
 
   // ================= FILTER + AGGREGATE =================
+  // แคชข้อความค้นหาของแต่ละแถว (เวอร์ชัน fold แล้ว) เพื่อไม่ต้องคำนวณซ้ำทุกครั้งที่ค้น
+  let HAY_CACHE = new WeakMap();
+  function hayOf(r){
+    let h = HAY_CACHE.get(r);
+    if(!h){
+      const raw = compact(normalize(r.category + " " + r.detail + " " + r.note + " " + r.room));
+      h = { raw, fold: thaiFold(raw) };
+      HAY_CACHE.set(r, h);
+    }
+    return h;
+  }
+
+  // นับว่าแถวนี้ตรงกับคำค้นกี่คำ — ใช้จัดอันดับความเกี่ยวข้อง ไม่ใช่แค่ "ตรงหรือไม่ตรง"
+  function keywordHits(r, keywords){
+    const hay = hayOf(r);
+    let hits = 0;
+    keywords.forEach(k=>{
+      const ck = compact(k);
+      if(!ck) return;
+      // ตรงตัว -> นับเต็ม, ตรงหลัง fold (ต่างแค่วรรณยุกต์/พยัญชนะเสียงเดียวกัน) -> นับเต็มเช่นกัน
+      if(hay.raw.indexOf(ck) !== -1) hits++;
+      else if(hay.fold.indexOf(thaiFold(ck)) !== -1) hits++;
+    });
+    return hits;
+  }
+
   function applyFilters(scope, rooms, topic, keywords){
-    return records.filter(r=>{
+    const base = records.filter(r=>{
       if(scope.date){
         if(r.date !== scope.date) return false;
       } else if(!scope.allTime){
@@ -861,18 +1096,25 @@
       if(rooms.length){
         if(!rooms.some(room => r.room === room)) return false;
       }
-      if(topic){
-        if(topic.category){
-          if(r.category !== topic.category) return false;
-        }
-      }
-      if(!topic && !rooms.length && keywords.length){
-        const hayCompact = compact(normalize(r.category + " " + r.detail + " " + r.note + " " + r.room));
-        const hit = keywords.some(k => hayCompact.indexOf(compact(k)) !== -1);
-        if(!hit) return false;
+      if(topic && topic.category){
+        if(r.category !== topic.category) return false;
       }
       return true;
     });
+
+    if(topic || rooms.length || !keywords.length) return base;
+
+    // จัดอันดับความเกี่ยวข้อง: เก็บเฉพาะแถวที่ตรงกับคำค้น "มากที่สุด" เท่าที่มีในชุดผลลัพธ์
+    // (เดิมใช้ OR ล้วน ทำให้ถามหลายคำแล้วได้ผลกว้างเกินไป เช่นถาม 2 คำ แต่ได้แถวที่ตรงแค่คำเดียวปนมาด้วย)
+    const scored = [];
+    let maxHit = 0;
+    base.forEach(r=>{
+      const h = keywordHits(r, keywords);
+      if(h > 0){ scored.push([r, h]); if(h > maxHit) maxHit = h; }
+    });
+    if(!scored.length) return [];
+    const cut = maxHit >= 2 ? maxHit : 1;
+    return scored.filter(([,h]) => h >= cut).map(([r]) => r);
   }
 
   function categoryBreakdown(list){
@@ -881,63 +1123,280 @@
     return Object.entries(counts).sort((a,b)=>b[1]-a[1]);
   }
 
-  // ================= FUZZY SEARCH (ทนต่อคำผิด/คำที่ Speech-to-Text ฟังมาไม่ตรง) =================
-  // สร้าง "คลังคำศัพท์" จากเนื้อหาจริงในชีท (ประเภทงาน/รายละเอียด/หมายเหตุ/ห้อง) ครั้งเดียว แล้วอัปเดตใหม่
-  // ทุกครั้งที่ซิงก์ข้อมูล เพื่อให้คำที่ไม่ตรงเป๊ะแต่ใกล้เคียงกับคำที่มีอยู่จริงในข้อมูล ยังค้นหาเจอได้
-  let VOCAB = [];
-  function rebuildVocab(){
-    const bag = new Set();
-    records.forEach(r=>{
-      const text = normalize(r.category + " " + r.detail + " " + r.note);
-      const cleaned = text.replace(/[^\u0E00-\u0E7Fa-z0-9\s]/g," ");
-      let residual = cleaned;
-      Array.from(STOPWORDS).sort((a,b)=>b.length-a.length).forEach(w=>{ residual = residual.split(w).join(" "); });
-      residual.split(/\s+/).forEach(w=>{ w = w.trim(); if(w.length >= 3) bag.add(w); });
-    });
-    VOCAB = Array.from(bag);
+  // ============================================================================
+  // ================= FUZZY MATCHING ENGINE v2 =================================
+  // ============================================================================
+  // เป้าหมาย: พิมพ์ผิด สะกดผิด วรรณยุกต์ผิด หรือพูดแล้วเสียงเพี้ยน (Speech-to-Text)
+  // ก็ยังต้องค้นเจอ โดยระบบจะบอกเสมอว่า "นี่คือผลลัพธ์ใกล้เคียงที่สุด" ไม่ใช่คำตอบตรงตัว
+  //
+  // ประกอบด้วย 4 ชั้น ทำงานต่อกันเป็นทอด ๆ:
+  //   ชั้นที่ 1  Normalize    — เลขไทย→เลขอารบิก, แก้คำที่ STT ฟังผิดบ่อย, ตัดอักขระขยะ
+  //   ชั้นที่ 2  Thai Folding — ยุบวรรณยุกต์/ทัณฑฆาต + ยุบพยัญชนะเสียงเดียวกัน (ส ศ ษ ซ → ส)
+  //   ชั้นที่ 3  Similarity   — Damerau-Levenshtein (นับการสลับตัวอักษรด้วย) + Dice bigram
+  //   ชั้นที่ 4  Resolver     — จับคู่กับ คลังคำ / ชื่อห้อง / ชื่อหมวดหมู่ แล้วคืนคะแนนความมั่นใจ
+  // ----------------------------------------------------------------------------
+
+  // ---- ชั้นที่ 1: Normalize ----
+  const THAI_DIGITS = "๐๑๒๓๔๕๖๗๘๙";
+  function toArabicDigits(s){
+    return (s||"").replace(/[๐-๙]/g, ch => String(THAI_DIGITS.indexOf(ch)));
   }
 
-  function levenshtein(a, b){
+  // คำที่ Speech-to-Text ภาษาไทยมักถอดออกมาไม่ตรงกับที่พูด (รวบรวมจากการใช้งานจริง)
+  // แปลงให้เป็นรูปมาตรฐานที่ตรงกับข้อมูลในชีทก่อนเข้าสู่ขั้นตอนค้นหา
+  const STT_FIXES = [
+    // รหัสอาคาร: พูด "อีเอ็น 1" แต่ระบบมักถอดได้เป็น "เอ็ม 1" / "เอ็น 1"
+    [/อี\s*เอ็?น\s*(\d)/g, "en$1"],
+    [/(?:^|\s)เอ็?น\s*(\d)/g, " en$1"],
+    [/(?:^|\s)เอ็?ม\s*(\d)/g, " en$1"],
+    [/ห้องเบอร์\s*/g, "ห้อง "],
+    // คำทับศัพท์ที่ถอดเสียงได้หลายแบบ -> ยุบให้เหลือรูปเดียวที่ตรงกับข้อมูลในชีท
+    [/วาย\s*ฟาย|ไวฟาย|ว้ายฟาย/g, "wifi"],
+    [/ซี\s*ซี\s*ที\s*วี/g, "cctv"],
+    [/เค\s*พี\s*ไอ/g, "kpi"],
+    [/ไอ\s*พี\s*โฟน/g, "ip phone"],
+    [/เอช\s*ดี\s*เอ็?ม\s*ไอ/g, "hdmi"],
+    [/ยู\s*บี\s*ซี/g, "ubc"],
+    [/โน๊ตบุ๊?ค|โน้ตบุ้?ค|โน๊ตบุ้?ก|โน้ตบุ๊ก|โนตบุค/g, "notebook"],
+    [/โปรเจ็?กเตอร์|โปรเจ็คเตอร์|โปรเจกเตอร์|โปรเจ็กต์เตอร์|โปเจคเตอร์/g, "โปรเจคเตอร์"],
+    [/พริ้?นเตอร์|ปรินเตอร์|ปริ๊นท์เตอร์|ปริ้นท์เตอร์/g, "ปริ้นเตอร์"],
+    [/อินเตอร์เน็ต|อินเทอเน็ต|อินเตอเน็ต/g, "อินเทอร์เน็ต"],
+    [/ไมโครโฟน|ไมค์ลอย/g, "ไมค์"],
+    [/สแกนลายนิ้วมือ|สแกนนิ้ว/g, "สแกนลงเวลา"]
+  ];
+
+  // ทำความสะอาดคำถามก่อนตีความ — เรียกครั้งเดียวที่จุดเข้า ทุกฟังก์ชันหลังจากนี้ได้ประโยชน์หมด
+  function preprocessQuery(q){
+    let s = toArabicDigits((q||"").toString());
+    s = s.replace(/[\u200B\uFEFF]/g, "");          // อักขระล่องหนที่ติดมาจากการคัดลอกข้อความ
+    s = s.replace(/[“”„]/g,'"').replace(/[‘’]/g,"'");
+    const lower = s.toLowerCase();
+    let fixed = lower;
+    STT_FIXES.forEach(([re, to])=>{ fixed = fixed.replace(re, to); });
+    return fixed.replace(/\s{2,}/g," ").trim();
+  }
+
+  // ---- ชั้นที่ 2: Thai Folding ----
+  // ยุบรูปเขียนที่ต่างกันแต่ "เสียงเหมือนกัน" ให้เหลือรูปเดียว ทำให้ "โปรเจ็คเตอร์" กับ
+  // "โปรเจกเตอร์" กลายเป็นคำเดียวกันทันที โดยไม่ต้องพึ่งพจนานุกรมคำผิดรายคำ
+  const FOLD_MAP = (function(){
+    const groups = [
+      ["ส","ศ","ษ","ซ","ทร"], ["ด","ฎ"], ["ต","ฏ"],
+      ["ท","ธ","ฑ","ฒ","ถ","ฐ"], ["น","ณ"], ["ล","ฬ","ร","ฤ"],
+      ["ค","ข","ฆ","ฃ","ฅ"], ["ช","ฉ","ฌ"], ["พ","ผ","ภ"],
+      ["ย","ญ"], ["บ","ป"], ["ไ","ใ"], ["า","ๅ"]
+    ];
+    const m = {};
+    groups.forEach(g => g.forEach(ch => { m[ch] = g[0]; }));
+    return m;
+  })();
+
+  function thaiFold(s){
+    let t = (s||"").toLowerCase();
+    t = t.replace(/ำ/g,"าม").replace(/[ๆฯ]/g,"");
+    t = t.replace(/[\u0E47-\u0E4E]/g,"");           // ็ ่ ้ ๊ ๋ ์ ํ ๎ (วรรณยุกต์ + ทัณฑฆาต)
+    t = t.replace(/ทร/g,"ส");                       // "ทร" ออกเสียง "ซ" เช่น ทราบ
+    let out = "";
+    for(const ch of t) out += (FOLD_MAP[ch] || ch);
+    return out.replace(/[^\u0E00-\u0E7Fa-z0-9]/g,"");
+  }
+
+  // ---- ชั้นที่ 3: Similarity ----
+  // Damerau-Levenshtein แบบมีเพดาน (ตัดจบทันทีเมื่อเกินระยะที่ยอมรับ = เร็วกว่ามากบนคลังคำใหญ่)
+  function boundedDamerau(a, b, maxDist){
     if(a === b) return 0;
     const al = a.length, bl = b.length;
-    if(al === 0) return bl;
-    if(bl === 0) return al;
-    let prev = new Array(bl+1);
-    for(let j=0;j<=bl;j++) prev[j] = j;
-    for(let i=1;i<=al;i++){
-      const curr = [i];
-      for(let j=1;j<=bl;j++){
+    if(Math.abs(al - bl) > maxDist) return -1;
+    if(al === 0) return bl > maxDist ? -1 : bl;
+    if(bl === 0) return al > maxDist ? -1 : al;
+    let prev2 = null;
+    let prev = new Array(bl + 1);
+    for(let j = 0; j <= bl; j++) prev[j] = j;
+    for(let i = 1; i <= al; i++){
+      const curr = new Array(bl + 1);
+      curr[0] = i;
+      let rowMin = curr[0];
+      const from = Math.max(1, i - maxDist), to = Math.min(bl, i + maxDist);
+      for(let j = 1; j <= bl; j++){
+        if(j < from || j > to){ curr[j] = maxDist + 1; continue; }
         const cost = a[i-1] === b[j-1] ? 0 : 1;
-        curr[j] = Math.min(curr[j-1]+1, prev[j]+1, prev[j-1]+cost);
+        let v = Math.min(curr[j-1] + 1, prev[j] + 1, prev[j-1] + cost);
+        if(i > 1 && j > 1 && a[i-1] === b[j-2] && a[i-2] === b[j-1]){
+          v = Math.min(v, prev2[j-2] + 1);          // สลับตำแหน่งตัวอักษร (เช่น "เคร่ือง")
+        }
+        curr[j] = v;
+        if(v < rowMin) rowMin = v;
       }
-      prev = curr;
+      if(rowMin > maxDist) return -1;               // ตัดจบก่อน ไม่ต้องคำนวณต่อ
+      prev2 = prev; prev = curr;
     }
-    return prev[bl];
+    return prev[bl] > maxDist ? -1 : prev[bl];
   }
 
-  // หาคำในคลังคำศัพท์ที่ใกล้เคียงกับคำที่พิมพ์/พูดมามากที่สุด ภายในระยะที่ยอมรับได้ตามความยาวคำ
+  function bigramSet(s){
+    const set = new Set();
+    if(s.length < 2){ set.add(s); return set; }
+    for(let i=0;i<s.length-1;i++) set.add(s.slice(i,i+2));
+    return set;
+  }
+  // Dice coefficient — เก่งเรื่องคำที่สลับ/ขาดหาย ซึ่ง Levenshtein ล้วน ๆ มักให้คะแนนต่ำเกินจริง
+  function diceSim(a, b){
+    const A = bigramSet(a), B = bigramSet(b);
+    let inter = 0;
+    A.forEach(g => { if(B.has(g)) inter++; });
+    return (2 * inter) / (A.size + B.size);
+  }
+
+  // คะแนนความคล้าย 0.00–1.00 (1.00 = เหมือนกันหลัง fold)
+  function simScore(rawA, rawB){
+    const a = thaiFold(rawA), b = thaiFold(rawB);
+    if(!a || !b) return 0;
+    if(a === b) return 1;
+    if(a.length >= 3 && b.indexOf(a) !== -1) return 0.93;   // คำค้นเป็นส่วนหนึ่งของคำจริง
+    if(b.length >= 3 && a.indexOf(b) !== -1) return 0.90;
+    const maxLen = Math.max(a.length, b.length);
+    const cap = Math.max(1, Math.ceil(maxLen * 0.45));
+    const d = boundedDamerau(a, b, cap);
+    const lev = d < 0 ? 0 : 1 - (d / maxLen);
+    return Math.max(lev, diceSim(a, b) * 0.94);
+  }
+
+  // เกณฑ์ผ่าน: คำสั้นต้องเหมือนมากกว่าคำยาว (คำสั้นเพี้ยนนิดเดียวก็กลายเป็นคนละคำได้ง่าย)
+  function simThreshold(len){
+    if(len <= 3) return 0.88;
+    if(len <= 5) return 0.78;
+    if(len <= 8) return 0.70;
+    return 0.64;
+  }
+
+  // ---- ชั้นที่ 4: Resolver ----
+  // คลังคำศัพท์สร้างจากเนื้อหาจริงในชีท อัปเดตใหม่ทุกครั้งที่ซิงก์ข้อมูล
+  let VOCAB = [];        // [{ term, fold }]
+  let ROOM_INDEX = [];   // [{ room, key, fold }]
+  let CAT_INDEX = [];    // [{ category, fold }]
+
+  function rebuildVocab(){
+    const bag = new Set();
+    const stopSorted = Array.from(STOPWORDS).sort((a,b)=>b.length-a.length);
+    records.forEach(r=>{
+      const text = normalize(r.category + " " + r.detail + " " + r.note);
+      let residual = text.replace(/[^\u0E00-\u0E7Fa-z0-9\s]/g," ");
+      stopSorted.forEach(w=>{ residual = residual.split(w).join(" "); });
+      residual.split(/\s+/).forEach(w=>{ w = w.trim(); if(w.length >= 3) bag.add(w); });
+    });
+    // เติมวลีที่รู้จักและชื่อหมวดหมู่เข้าไปด้วย เพื่อให้แก้คำผิดระดับวลีได้ ไม่ใช่แค่คำเดี่ยว
+    KNOWN_PHRASES.forEach(p => bag.add(p));
+    VOCAB = Array.from(bag).map(t => ({ term: t, fold: thaiFold(t) }));
+
+    ROOM_INDEX = Array.from(new Set(records.map(r=>r.room).filter(Boolean))).map(room=>({
+      room,
+      key: room.toUpperCase().replace(/\s+/g,""),
+      fold: thaiFold(room.replace(/[\-.,]/g,""))
+    }));
+    CAT_INDEX = Array.from(new Set(records.map(r=>r.category).filter(Boolean))).map(c=>({
+      category: c, fold: thaiFold(c)
+    }));
+  }
+
+  // หาคำในคลังที่ใกล้เคียงที่สุด คืน { term, score } หรือ null ถ้าไม่ผ่านเกณฑ์
   function fuzzyFindClosest(word){
-    if(word.length < 3) return null;
-    const maxDist = word.length <= 4 ? 1 : (word.length <= 7 ? 2 : 3);
-    let best = null, bestDist = Infinity;
+    if(!word || word.length < 2) return null;
+    const wf = thaiFold(word);
+    if(!wf) return null;
+    const th = simThreshold(wf.length);
+    let best = null, bestScore = 0;
     for(const v of VOCAB){
-      if(Math.abs(v.length - word.length) > maxDist) continue;
-      const d = levenshtein(word, v);
-      if(d < bestDist){ bestDist = d; best = v; }
-      if(bestDist === 0) break;
+      if(Math.abs(v.fold.length - wf.length) > Math.ceil(wf.length * 0.6) + 1) continue;
+      const s = simScore(word, v.term);
+      if(s > bestScore){ bestScore = s; best = v.term; }
+      if(bestScore === 1) break;
     }
-    return (best && bestDist > 0 && bestDist <= maxDist) ? best : null;
+    return (best && bestScore >= th) ? { term: best, score: bestScore } : null;
   }
 
-  // ลองแก้คำค้นแต่ละคำให้ใกล้เคียงกับคำในข้อมูลจริงที่สุด ใช้เป็นทางเลือกสำรองเมื่อค้นแบบตรงตัวแล้วไม่พบผลลัพธ์
+  // รายการคำใกล้เคียงหลายตัว ใช้ทำปุ่ม "คุณหมายถึง…?" ให้ผู้ใช้กดเลือกเองได้
+  function suggestTerms(word, n){
+    if(!word || word.length < 2) return [];
+    const scored = [];
+    for(const v of VOCAB){
+      const s = simScore(word, v.term);
+      if(s >= 0.55) scored.push([v.term, s]);
+    }
+    scored.sort((a,b)=> b[1]-a[1]);
+    const out = [], seen = new Set();
+    for(const [t] of scored){
+      const f = thaiFold(t);
+      if(seen.has(f)) continue;
+      seen.add(f); out.push(t);
+      if(out.length >= (n||5)) break;
+    }
+    return out;
+  }
+
   function fuzzyCorrectKeywords(keywords){
     let changed = false;
+    let minScore = 1;
     const corrected = keywords.map(k=>{
       const fix = fuzzyFindClosest(k);
-      if(fix && fix !== k){ changed = true; return fix; }
+      if(fix && fix.term !== k){ changed = true; minScore = Math.min(minScore, fix.score); return fix.term; }
       return k;
     });
-    return { corrected, changed };
+    return { corrected, changed, score: minScore };
+  }
+
+  // ---- Fuzzy สำหรับ "ชื่อห้อง" โดยเฉพาะ ----
+  // ห้องส่วนใหญ่เป็นรหัส EN#-### ซึ่งพลาดได้ง่ายมากตอนพูด (เลขสลับ/ขาดขีด/ได้ยินเป็น M แทน EN)
+  function fuzzyFindRoom(qOriginal){
+    if(!ROOM_INDEX.length) return null;
+    const q = preprocessQuery(qOriginal);
+    const qUpper = q.toUpperCase().replace(/\s+/g,"");
+
+    // 1) จับรหัสรูปแบบ EN#-### หรือเลขห้อง 3 หลักลอย ๆ ("ห้อง 204")
+    const codes = [];
+    const reCode = /EN\s*(\d)\s*[-–.,]?\s*(\d{3}[A-Z]?)/gi;
+    let m;
+    while((m = reCode.exec(qUpper)) !== null) codes.push("EN" + m[1] + "-" + m[2]);
+    const bare = qUpper.match(/(?:^|[^0-9])(\d{3}[A-Z]?)(?![0-9])/);
+    if(!codes.length && bare) codes.push(bare[1]);
+
+    let best = null, bestScore = 0;
+    ROOM_INDEX.forEach(ri=>{
+      const rk = ri.key.replace(/[-–.,\s]/g,"");
+      let s = 0;
+      codes.forEach(code=>{
+        const ck = code.replace(/[-–.,\s]/g,"");
+        if(rk === ck) s = Math.max(s, 1);
+        else if(rk.indexOf(ck) !== -1 && ck.length >= 3) s = Math.max(s, 0.95);
+        else {
+          const d = boundedDamerau(ck, rk, 2);
+          if(d >= 0) s = Math.max(s, 1 - d / Math.max(ck.length, rk.length));
+        }
+      });
+      // ห้องที่เป็นชื่อภาษาไทย (เช่น "ห้องพัก รปภ.") เทียบด้วยความคล้ายของข้อความ
+      if(/[\u0E00-\u0E7F]/.test(ri.room)) s = Math.max(s, simScore(q, ri.room));
+      if(s > bestScore){ bestScore = s; best = ri.room; }
+    });
+    return (best && bestScore >= 0.72) ? { room: best, score: bestScore } : null;
+  }
+
+  // ---- Fuzzy สำหรับ "หมวดหมู่งาน" ----
+  function fuzzyFindCategory(qNorm){
+    let best = null, bestScore = 0;
+    // เทียบกับคำใบ้ใน TOPIC_MAP ก่อน แล้วค่อยเทียบกับชื่อหมวดหมู่เต็มในชีท
+    TOPIC_MAP.forEach(entry=>{
+      entry.keywords.forEach(k=>{
+        const s = simScore(qNorm, k);
+        const inline = Math.max(...qNorm.split(/\s+/).map(w => simScore(w, k)), 0);
+        const score = Math.max(s, inline);
+        if(score > bestScore){ bestScore = score; best = entry; }
+      });
+    });
+    if(best && bestScore >= 0.80) return { topic: best, score: bestScore };
+    CAT_INDEX.forEach(ci=>{
+      const s = simScore(qNorm, ci.category);
+      if(s > bestScore){ bestScore = s; best = { keywords: [ci.category], category: ci.category }; }
+    });
+    return (best && bestScore >= 0.72) ? { topic: best, score: bestScore } : null;
   }
 
   // ================= ANALYTICS ENGINE =================
@@ -1410,6 +1869,279 @@
     return html;
   }
 
+  // ============================================================================
+  // ============ ชั้นสรุปความ: เปลี่ยน "ตัวเลข" ให้เป็น "ประโยคที่อ่านรู้เรื่อง" ============
+  // ============================================================================
+  // ทั้งหมดนี้เป็นการประกอบประโยคจากค่าสถิติที่คำนวณได้จริง (template-based)
+  // ไม่ใช่ข้อความที่ AI แต่งขึ้นเอง — ตัวเลขทุกตัวตรวจสอบย้อนกลับไปที่ข้อมูลในชีทได้เสมอ
+
+  const dayNamesTh = ["อาทิตย์","จันทร์","อังคาร","พุธ","พฤหัสบดี","ศุกร์","เสาร์"];
+  function dayOfWeek(iso){
+    const [y,m,d] = iso.split("-").map(Number);
+    return new Date(y, m-1, d).getDay();
+  }
+  function daysBetween(isoA, isoB){
+    const a = new Date(isoA).getTime(), b = new Date(isoB).getTime();
+    return Math.round(Math.abs(b-a) / 86400000);
+  }
+
+  // ---- ประโยคสรุปหลัก ----
+  function buildNarrative(list, subjectLabel){
+    if(!list || !list.length) return "";
+    const dates = list.map(r=>r.date).sort();
+    const first = dates[0], last = dates[dates.length-1];
+    const totalWorkload = list.reduce((s,r)=> s + (r.workload||0), 0);
+    const cats = categoryBreakdown(list);
+    const rooms = Object.entries(list.reduce((m,r)=>{ m[r.room]=(m[r.room]||0)+1; return m; },{})).sort((a,b)=>b[1]-a[1]);
+    const months = Object.entries(list.reduce((m,r)=>{ const k=r.date.slice(0,7); m[k]=(m[k]||0)+1; return m; },{})).sort((a,b)=>b[1]-a[1]);
+    const failed = list.filter(r => (r.status||"").trim() && (r.status||"").trim() !== "สำเร็จ").length;
+
+    const parts = [];
+    parts.push(`${subjectLabel ? "<b>"+escapeHtml(subjectLabel)+"</b> " : ""}พบทั้งหมด <b>${list.length}</b> รายการ รวมภาระงาน <b>${fmtNum(totalWorkload)}</b> หน่วย`);
+    if(first === last) parts.push(`เกิดขึ้นในวันที่ ${fmtDateTh(first)}`);
+    else parts.push(`ครอบคลุมช่วง ${fmtDateTh(first)} ถึง ${fmtDateTh(last)}`);
+
+    if(cats.length){
+      const [cName, cN] = cats[0];
+      const pct = Math.round(cN / list.length * 100);
+      parts.push(`ส่วนใหญ่เป็นงานประเภท <b>${escapeHtml(cName)}</b> จำนวน ${cN} ครั้ง (${pct}%)`);
+      if(cats.length > 1) parts.push(`และมีอีก ${cats.length-1} ประเภทงานปะปนอยู่`);
+    }
+    if(rooms.length > 1){
+      parts.push(`สถานที่ที่พบบ่อยที่สุดคือ <b>${escapeHtml(rooms[0][0])}</b> (${rooms[0][1]} ครั้ง จาก ${rooms.length} สถานที่)`);
+    }
+    if(months.length > 1){
+      parts.push(`เดือนที่มีงานหนาแน่นที่สุดคือ <b>${monthLabel(months[0][0])}</b> (${months[0][1]} ครั้ง)`);
+    }
+    if(failed > 0){
+      parts.push(`มีงานที่ยังไม่สำเร็จ <b>${failed}</b> รายการ ควรตรวจสอบเพิ่มเติม`);
+    } else if(list.length >= 3){
+      parts.push(`ทุกรายการมีสถานะ <b>สำเร็จ</b> ครบถ้วน`);
+    }
+    return `<div class="narrative">${parts.join(" · ")}</div>`;
+  }
+
+  // ---- กล่องข้อสังเกตจากข้อมูล ----
+  function recurringPairs(list, minCount){
+    const m = {};
+    list.forEach(r=>{
+      const k = (r.room||"ไม่ระบุ") + "||" + (r.category||"ไม่ระบุ");
+      (m[k] = m[k] || []).push(r.date);
+    });
+    return Object.entries(m)
+      .filter(([,ds]) => ds.length >= (minCount||3))
+      .map(([k,ds])=>{
+        const sorted = ds.slice().sort();
+        let gapSum = 0;
+        for(let i=1;i<sorted.length;i++) gapSum += daysBetween(sorted[i-1], sorted[i]);
+        const avgGap = sorted.length > 1 ? Math.round(gapSum/(sorted.length-1)) : null;
+        const [room, category] = k.split("||");
+        return { room, category, count: sorted.length, last: sorted[sorted.length-1], avgGap };
+      })
+      .sort((a,b)=> b.count - a.count);
+  }
+
+  function renderInsights(list){
+    if(!list || list.length < 3) return "";
+    const bullets = [];
+
+    const rec = recurringPairs(list, 3);
+    if(rec.length){
+      const t = rec[0];
+      bullets.push(`<b>ปัญหาซ้ำจุดเดิม:</b> ${escapeHtml(t.room)} พบงาน "${escapeHtml(t.category)}" ถึง ${t.count} ครั้ง` +
+        (t.avgGap ? ` เฉลี่ยเกิดซ้ำทุก ~${t.avgGap} วัน` : "") + ` (ล่าสุด ${fmtDateTh(t.last)})`);
+    }
+
+    const dow = new Array(7).fill(0);
+    list.forEach(r=> dow[dayOfWeek(r.date)]++);
+    const maxDow = dow.indexOf(Math.max(...dow));
+    if(Math.max(...dow) >= 3){
+      bullets.push(`<b>จังหวะเวลา:</b> วัน${dayNamesTh[maxDow]}เป็นวันที่มีงานเข้ามากที่สุด (${dow[maxDow]} ครั้ง จาก ${list.length})`);
+    }
+
+    const heavy = [...list].sort((a,b)=>(b.workload||0)-(a.workload||0))[0];
+    if(heavy && heavy.workload){
+      bullets.push(`<b>งานที่ใช้ภาระงานสูงสุด:</b> ${fmtNum(heavy.workload)} หน่วย — ${escapeHtml(heavy.detail.slice(0,70))}${heavy.detail.length>70?"…":""} (${escapeHtml(heavy.room)}, ${fmtDateTh(heavy.date)})`);
+    }
+
+    const months = Object.entries(list.reduce((m,r)=>{ const k=r.date.slice(0,7); m[k]=(m[k]||0)+1; return m; },{})).sort();
+    if(months.length >= 3){
+      const lastM = months[months.length-1], prevM = months[months.length-2];
+      const chg = prevM[1] ? Math.round((lastM[1]-prevM[1])/prevM[1]*100) : 0;
+      const dir = chg > 0 ? "เพิ่มขึ้น" : (chg < 0 ? "ลดลง" : "คงที่");
+      bullets.push(`<b>ทิศทางล่าสุด:</b> ${monthLabel(lastM[0])} มี ${lastM[1]} งาน ${dir} ${Math.abs(chg)}% จาก ${monthLabel(prevM[0])}`);
+    }
+
+    const avgWl = list.reduce((s,r)=>s+(r.workload||0),0) / list.length;
+    bullets.push(`<b>ค่าเฉลี่ย:</b> ${avgWl.toFixed(2)} หน่วยภาระงานต่อ 1 รายการ`);
+
+    if(!bullets.length) return "";
+    return `<div class="insight-box">
+      <div class="ib-title">💡 ข้อสังเกตจากข้อมูลชุดนี้</div>
+      <ul>${bullets.map(b=>`<li>${b}</li>`).join("")}</ul>
+    </div>`;
+  }
+
+  // ---- เฝ้าระวังจุดเสี่ยงเกิดซ้ำ ----
+  function renderRiskWatchlist(){
+    const rec = recurringPairs(records, 3).filter(t => t.avgGap && t.avgGap > 0);
+    if(!rec.length){
+      return `<div class="ans-title">จุดเฝ้าระวังความเสี่ยงเกิดซ้ำ</div><div class="empty-note">ยังไม่พบรูปแบบการเกิดซ้ำที่ชัดเจนพอในข้อมูลปัจจุบัน</div>`;
+    }
+    const latestDate = records.map(r=>r.date).sort().slice(-1)[0];
+    const scored = rec.map(t=>{
+      const since = daysBetween(t.last, latestDate);
+      const ratio = since / t.avgGap;                 // ครบรอบแล้วกี่เท่า
+      return Object.assign({}, t, { since, ratio, score: t.count * Math.min(ratio, 2.5) });
+    }).sort((a,b)=> b.score - a.score).slice(0, 7);
+
+    let html = `<div class="ans-title">🛡️ จุดเฝ้าระวัง: จุดที่มีรูปแบบ "เกิดซ้ำ" ชัดเจนที่สุด</div>`;
+    html += `<div class="narrative">พบ <b>${rec.length}</b> คู่ (สถานที่ + ประเภทงาน) ที่เกิดซ้ำตั้งแต่ 3 ครั้งขึ้นไป จัดลำดับจาก <b>ความถี่</b> ร่วมกับ <b>ระยะเวลาที่ผ่านไปเทียบกับรอบการเกิดซ้ำเฉลี่ย</b> เพื่อชี้จุดที่ควรเข้าตรวจเชิงป้องกันก่อน</div>`;
+    scored.forEach(t=>{
+      const overdue = t.ratio >= 1;
+      html += `<div class="risk-row" style="border-left-color:${overdue ? 'var(--danger)' : 'var(--warn)'}">
+        <span class="rr-name">${escapeHtml(t.room)}</span>
+        <span>${escapeHtml(t.category)}</span>
+        <span class="rr-meta mono">${t.count} ครั้ง · รอบเฉลี่ย ~${t.avgGap} วัน · ผ่านมาแล้ว ${t.since} วัน</span>
+        <span class="filter-chip" style="${overdue ? 'background:var(--danger-soft);color:var(--danger);' : ''}">${overdue ? "ครบรอบแล้ว" : "ยังไม่ครบรอบ"}</span>
+      </div>`;
+    });
+    html += `<div class="corr-hedge">นี่ไม่ใช่การพยากรณ์ด้วย AI — เป็นเพียงการคำนวณ "ความถี่และช่วงห่างของการเกิดซ้ำ" จากประวัติจริงในชีท เพื่อช่วยจัดลำดับความสำคัญของการตรวจเชิงป้องกัน อุปกรณ์ที่ครบรอบแล้วไม่ได้แปลว่าจะเสียแน่นอน</div>`;
+    const affected = records.filter(r => scored.some(t => t.room === r.room && t.category === r.category));
+    html += renderExportBar(affected, "จุดเฝ้าระวังความเสี่ยง");
+    return html;
+  }
+
+  // ---- การกระจายตัวตามวันในสัปดาห์ ----
+  function renderWeekday(list, title){
+    const dow = new Array(7).fill(0);
+    const wl  = new Array(7).fill(0);
+    list.forEach(r=>{ const d = dayOfWeek(r.date); dow[d]++; wl[d] += (r.workload||0); });
+    const max = Math.max(...dow) || 1;
+    let html = `<div class="ans-title">${escapeHtml(title || "การกระจายงานตามวันในสัปดาห์")}</div>`;
+    const busiest = dow.indexOf(Math.max(...dow));
+    const quietest = dow.map((n,i)=>[n,i]).filter(([n])=>n>0).sort((a,b)=>a[0]-b[0])[0];
+    html += `<div class="narrative">วันที่มีงานเข้ามากที่สุดคือ <b>วัน${dayNamesTh[busiest]}</b> (${dow[busiest]} ครั้ง)` +
+      (quietest ? ` และเบาที่สุดคือ <b>วัน${dayNamesTh[quietest[1]]}</b> (${quietest[0]} ครั้ง)` : "") +
+      ` — ใช้ประกอบการวางแผนกำลังคน/เวรประจำวันได้</div>`;
+    html += `<div class="heat-row">` + [1,2,3,4,5,6,0].map(i=>{
+      const pct = Math.round(dow[i]/max*100);
+      return `<div class="heat-cell" style="background:hsla(var(--hue),90%,${100 - Math.round(pct*0.38)}%,${0.25 + pct/180});">
+        <div class="hc-d">${dayNamesTh[i]}</div>
+        <div class="hc-n">${dow[i]}</div>
+        <div class="hc-d mono">${fmtNum(wl[i])}</div>
+      </div>`;
+    }).join("") + `</div>`;
+    html += `<div class="corr-hedge">ตัวเลขบนสุด = จำนวนงาน, ตัวเลขล่าง = ภาระงานรวม (หน่วย) ของวันนั้น</div>`;
+    html += renderExportBar(list, title || "การกระจายงานตามวันในสัปดาห์");
+    return html;
+  }
+
+  // ---- งานที่ยังไม่สำเร็จ ----
+  function renderFailed(){
+    const failed = records.filter(r => (r.status||"").trim() && (r.status||"").trim() !== "สำเร็จ");
+    const rate = records.length ? (failed.length / records.length * 100) : 0;
+    let html = `<div class="ans-title">งานที่สถานะยังไม่สำเร็จ</div>`;
+    html += `<div class="ans-stats">
+      <div class="ans-stat"><div class="n">${failed.length}</div><div class="l">รายการที่ไม่สำเร็จ</div></div>
+      <div class="ans-stat"><div class="n">${(100-rate).toFixed(2)}%</div><div class="l">อัตราความสำเร็จรวม</div></div>
+      <div class="ans-stat"><div class="n">${records.length}</div><div class="l">งานทั้งหมด</div></div>
+    </div>`;
+    if(!failed.length){
+      html += `<div class="empty-note">ยอดเยี่ยมครับ — ไม่พบงานที่มีสถานะอื่นนอกจาก "สำเร็จ" ในข้อมูลชุดนี้เลย</div>`;
+      return html;
+    }
+    html += renderRecordList(failed, 20);
+    html += renderExportBar(failed, "งานที่ยังไม่สำเร็จ");
+    return html;
+  }
+
+  // ---- งานที่ใช้ภาระงานหนักที่สุด ----
+  function renderHeaviest(){
+    const top = [...records].sort((a,b)=>(b.workload||0)-(a.workload||0)).slice(0,12);
+    let html = `<div class="ans-title">งานที่ใช้ภาระงานสูงสุด 12 อันดับแรก</div>`;
+    const sumTop = top.reduce((s,r)=>s+(r.workload||0),0);
+    const sumAll = records.reduce((s,r)=>s+(r.workload||0),0);
+    html += `<div class="narrative">12 รายการนี้รวมภาระงาน <b>${fmtNum(sumTop)}</b> หน่วย คิดเป็น <b>${Math.round(sumTop/sumAll*100)}%</b> ของภาระงานสะสมทั้งหมด (${fmtNum(sumAll)} หน่วย) — สะท้อนว่างานจำนวนน้อยแต่หนักมาก มีผลต่อภาพรวมอย่างมีนัยสำคัญ</div>`;
+    const maxW = top[0] ? (top[0].workload||1) : 1;
+    top.forEach(r=>{
+      const pct = Math.round((r.workload||0)/maxW*100);
+      html += `<div class="breakdown-row">
+        <span style="max-width:42%">${escapeHtml(r.room)} · ${fmtDateTh(r.date)}</span>
+        <span class="breakdown-bar-track"><span class="breakdown-bar-fill" style="width:${pct}%"></span></span>
+        <span class="mono">${fmtNum(r.workload)}</span>
+      </div>`;
+    });
+    html += renderRecordList(top, 5, false);
+    html += renderExportBar(top, "งานภาระงานสูงสุด");
+    return html;
+  }
+
+  // ---- โปรไฟล์ของห้อง/สถานที่ (ใช้เมื่อผู้ใช้พิมพ์แค่ชื่อห้อง) ----
+  function renderRoomProfile(room, list){
+    const cats = categoryBreakdown(list);
+    const dates = list.map(r=>r.date).sort();
+    const totalWorkload = list.reduce((s,r)=>s+(r.workload||0),0);
+    const latestAll = records.map(r=>r.date).sort().slice(-1)[0];
+    const sinceLast = daysBetween(dates[dates.length-1], latestAll);
+    const rec = recurringPairs(list, 2);
+
+    let html = `<div class="ans-title">📍 โปรไฟล์ ${escapeHtml(room)}</div>`;
+    html += buildNarrative(list, room);
+    html += `<div class="ans-stats">
+      <div class="ans-stat"><div class="n">${list.length}</div><div class="l">งานทั้งหมด</div></div>
+      <div class="ans-stat"><div class="n">${fmtNum(totalWorkload)}</div><div class="l">ภาระงานรวม (หน่วย)</div></div>
+      <div class="ans-stat"><div class="n">${cats.length}</div><div class="l">ประเภทงานที่พบ</div></div>
+      <div class="ans-stat"><div class="n">${sinceLast}</div><div class="l">วันนับจากงานล่าสุด</div></div>
+    </div>`;
+    html += `<div class="sec-label">แยกตามประเภทงาน</div>`;
+    html += renderBreakdown(cats, list.length);
+    if(rec.length){
+      html += `<div class="sec-label">อาการที่เกิดซ้ำในห้องนี้</div>`;
+      rec.slice(0,4).forEach(t=>{
+        html += `<div class="risk-row"><span class="rr-name">${t.count}×</span><span>${escapeHtml(t.category)}</span>
+          <span class="rr-meta mono">${t.avgGap ? "รอบเฉลี่ย ~"+t.avgGap+" วัน · " : ""}ล่าสุด ${fmtDateTh(t.last)}</span></div>`;
+      });
+    }
+    html += `<div class="sec-label">ประวัติล่าสุด</div>`;
+    html += renderRecordList(list, 8);
+    html += renderInsights(list);
+    html += renderExportBar(list, "โปรไฟล์ " + room);
+    return html;
+  }
+
+  // ---- คู่มือคำสั่ง ----
+  function renderHelp(){
+    const groups = [
+      ["ค้นหาแบบเจาะจง", ["EN1-204", "ปัญหาอินเทอร์เน็ตเดือนกรกฎาคม", "งานวันนี้", "ห้อง 312 มีปัญหาอะไรบ้าง", "โปรเจคเตอร์เสียกี่ครั้ง"]],
+      ["สรุป & รายงาน", ["สรุปผลรายเดือน", "สรุปผลเดือนกรกฎาคม 2569", "เขียนรายงานเดือนมิถุนายน", "ช่วยสรุปรายงานผู้บริหาร", "วงรอบการประเมินที่ 2 ปี 2569"]],
+      ["วิเคราะห์เชิงลึก", ["วิเคราะห์ข้อมูล", "แนวโน้ม", "เปรียบเทียบพฤษภาคมกับมิถุนายน", "สรุปผล KPI รายเดือน", "ความสัมพันธ์ระหว่างไฟฟ้ากับ CCTV"]],
+      ["จัดอันดับ & เฝ้าระวัง", ["อาคารไหนมีปัญหามากที่สุด", "ห้องไหนเสียบ่อยที่สุด", "ห้องไหนเสี่ยงเกิดซ้ำ", "วันไหนงานเข้าเยอะที่สุด", "งานที่หนักที่สุด", "งานที่ไม่สำเร็จ", "timeline เหตุการณ์"]]
+    ];
+    let html = `<div class="ans-title">🧭 ผู้ช่วยตัวนี้ตอบอะไรได้บ้าง</div>`;
+    html += `<div class="narrative">ระบบนี้ <b>ไม่ได้ใช้ AI สร้างคำตอบ</b> — ทุกตัวเลขมาจากการคำนวณบนข้อมูลจริงในชีทโดยตรง และรองรับการพิมพ์ผิด/เสียงเพี้ยนด้วย Fuzzy Matching (ถ้าไม่ตรงเป๊ะแต่ใกล้เคียงพอ ระบบจะหาให้พร้อมแจ้งว่าเป็นผลลัพธ์ใกล้เคียง)</div>`;
+    groups.forEach(([title, qs])=>{
+      html += `<div class="sec-label">${escapeHtml(title)}</div><div class="dym">`;
+      html += qs.map(q=>`<button class="dym-chip" data-query="${escapeHtml(q)}">${escapeHtml(q)}</button>`).join("");
+      html += `</div>`;
+    });
+    html += `<div class="corr-hedge">เคล็ดลับ: กดปุ่มไมโครโฟน 🎤 เพื่อพูดถามแทนการพิมพ์ได้ · ทุกคำตอบที่มีรายการข้อมูลจะมีปุ่มส่งออก Excel / PDF / TXT อยู่ด้านล่างเสมอ</div>`;
+    return html;
+  }
+
+  // ---- "คุณหมายถึง…?" เมื่อค้นไม่เจอจริง ๆ ----
+  function renderDidYouMean(keywords, scope){
+    const pool = [];
+    (keywords||[]).forEach(k=>{ suggestTerms(k, 4).forEach(t=> pool.push(t)); });
+    const uniq = Array.from(new Set(pool)).slice(0, 8);
+    if(!uniq.length) return "";
+    const prefix = scope && scope.month !== null ? ("เดือน" + monthNamesTh[scope.month] + " ") : "";
+    return `<div class="dym">
+      <div class="dym-label">คุณหมายถึงคำเหล่านี้หรือเปล่า? (คำที่มีอยู่จริงในข้อมูล — กดเพื่อค้นต่อได้ทันที)</div>
+      ${uniq.map(t=>`<button class="dym-chip" data-query="${escapeHtml(prefix + t)}">${escapeHtml(t)}</button>`).join("")}
+    </div>`;
+  }
+
   // ================= RESPONSE RENDERING =================
   function buildFilterChips(scope, rooms, topic, keywords){
     const chips = [];
@@ -1423,19 +2155,30 @@
     return chips;
   }
 
-  function renderAnswer(query){
+  function renderAnswer(rawQuery){
+    // ล้างคำถามให้เป็นรูปมาตรฐานก่อน (เลขไทย -> อารบิก, แก้คำที่ Speech-to-Text ฟังผิดบ่อย)
+    // ทำที่จุดเดียวตรงนี้ ฟังก์ชันตีความทั้งหมดหลังจากนี้จึงได้ประโยชน์พร้อมกันทั้งระบบ
+    lastRoomFuzzy = null;
+    const query = preprocessQuery(rawQuery);
     const qNorm = normalize(query);
 
     // คำถามที่พิมพ์ตรงกับชื่อหมวดหมู่งานเป๊ะ (มาจากปุ่ม "ค้นหาด่วนตามหมวดหมู่") -> กรองตรงตัวแม่นยำ 100%
     // ไม่ผ่านระบบตีความคำถามทั่วไป กันความเสี่ยงตีความผิดหรือได้ผลกว้างเกินไป
-    const qCompactExact = compact(query);
-    const exactCategory = Array.from(new Set(records.map(r=>r.category))).find(c => compact(c) === qCompactExact);
+    const qCompactExact = compact(qNorm);
+    const qFoldExact = thaiFold(qCompactExact);
+    const exactCategory = Array.from(new Set(records.map(r=>r.category)))
+      .find(c => compact(normalize(c)) === qCompactExact || thaiFold(compact(c)) === qFoldExact);
     if(exactCategory){
       const filtered = records.filter(r => r.category === exactCategory);
       const totalWorkload = filtered.reduce((s,r)=> s + (r.workload||0), 0);
       let html = `<div class="filter-chips"><span class="filter-chip">🏷 หมวดหมู่: ${escapeHtml(exactCategory)}</span></div>`;
       html += `<div class="ans-title">พบ ${filtered.length} รายการ · รวมภาระงาน ${fmtNum(totalWorkload)} หน่วย</div>`;
+      html += buildNarrative(filtered, exactCategory);
+      html += `<div class="sec-label">สถานที่ที่พบบ่อยที่สุด</div>`;
+      html += renderBreakdown(Object.entries(filtered.reduce((m,r)=>{ m[r.room]=(m[r.room]||0)+1; return m; },{})).sort((a,b)=>b[1]-a[1]), filtered.length);
+      html += `<div class="sec-label">รายการล่าสุด</div>`;
       html += renderRecordList(filtered, 15);
+      html += renderInsights(filtered);
       html += renderExportBar(filtered, exactCategory);
       return html;
     }
@@ -1443,6 +2186,18 @@
     const intent = detectIntent(qNorm);
 
     // ---- กลุ่มคำถามเชิงวิเคราะห์/เปรียบเทียบ/แนวโน้ม ที่ทำงานกับข้อมูลทั้งชุด ไม่ผ่าน filter ตามช่วงเวลา/ห้อง ----
+    if(intent.main === "help") return renderHelp();
+    if(intent.main === "risk") return renderRiskWatchlist();
+    if(intent.main === "failed") return renderFailed();
+    if(intent.main === "heaviest") return renderHeaviest();
+    if(intent.main === "weekday"){
+      const sc = extractTimeScope(qNorm);
+      const rm = extractRoom(query);
+      const tp = extractTopic(qNorm);
+      const listW = applyFilters(sc, rm, tp, tp ? [] : extractKeywords(qNorm));
+      return renderWeekday(listW.length ? listW : records,
+        listW.length && listW.length !== records.length ? "การกระจายงานตามวันในสัปดาห์ (เฉพาะผลที่กรองไว้)" : "การกระจายงานตามวันในสัปดาห์ (ทั้งหมด)");
+    }
     if(intent.main === "fullAnalysis") return renderFullAnalysis();
     if(intent.main === "evalCycle"){
       const cyc = extractEvalCycle(query, qNorm);
@@ -1469,10 +2224,11 @@
     }
 
     // ---- กลุ่มคำถามที่ผ่าน filter ตามช่วงเวลา/ห้อง/หัวข้อตามปกติ ----
-    const scope = extractTimeScope(qNorm);
-    const rooms = extractRoom(query);
-    const topic = extractTopic(qNorm);
-    const keywords = topic ? [] : extractKeywords(qNorm);
+    let scope = extractTimeScope(qNorm);
+    const askedDate = scope.date;   // จำวันที่ที่ผู้ใช้ถามไว้ เผื่อระบบขยายช่วงเวลาให้ภายหลัง
+    let rooms = extractRoom(query);
+    let topic = extractTopic(qNorm);
+    let keywords = topic ? [] : extractKeywords(qNorm);
 
     if(intent.main === "timeline"){
       const filteredTl = applyFilters(scope, rooms, topic, keywords);
@@ -1481,39 +2237,96 @@
     }
 
     let filtered = applyFilters(scope, rooms, topic, keywords);
-    let fuzzyUsedText = null;
-    // ค้นแบบตรงตัวไม่เจอ -> ลองแก้คำค้นให้ใกล้เคียงกับคำจริงในข้อมูลที่สุดแล้วค้นซ้ำอีกครั้ง
-    // (ช่วยกรณีพิมพ์ผิด หรือพูดด้วยเสียงแล้ว Speech-to-Text แปลงคำมาไม่ตรงเป๊ะ)
+    let effTopic = topic, effRooms = rooms, effKeywords = keywords, effScope = scope;
+    const fuzzyNotes = [];      // ข้อความแจ้งผู้ใช้ว่าผลลัพธ์นี้มาจากการเดา "ใกล้เคียงที่สุด"
+
+    if(lastRoomFuzzy){
+      fuzzyNotes.push(`เดาสถานที่เป็น "${lastRoomFuzzy.room}" (ความใกล้เคียง ${Math.round(lastRoomFuzzy.score*100)}%)`);
+    }
+
+    // ---------- ค้นแบบตรงตัวไม่เจอ -> ไล่ผ่อนเงื่อนไขทีละชั้น ----------
+    // ชั้นที่ 1: แก้คำค้นให้ใกล้เคียงคำที่มีอยู่จริงในข้อมูล (พิมพ์ผิด / เสียงเพี้ยน)
     if(!filtered.length && !topic && !rooms.length && keywords.length){
       const fix = fuzzyCorrectKeywords(keywords);
       if(fix.changed){
         const retry = applyFilters(scope, rooms, topic, fix.corrected);
         if(retry.length){
-          filtered = retry;
-          fuzzyUsedText = fix.corrected.join(", ");
+          filtered = retry; effKeywords = fix.corrected;
+          fuzzyNotes.push(`แก้คำค้นเป็น "${fix.corrected.join(", ")}" (ความใกล้เคียง ${Math.round(fix.score*100)}%)`);
         }
       }
     }
-    const chips = buildFilterChips(scope, rooms, topic, keywords);
-    if(fuzzyUsedText){
-      chips.push("🔍 ใกล้เคียงที่สุด: " + fuzzyUsedText);
+    // ชั้นที่ 2: เดาว่าผู้ใช้น่าจะหมายถึง "หมวดหมู่งาน" หมวดใดหมวดหนึ่ง
+    if(!filtered.length && !topic && !rooms.length){
+      const fc = fuzzyFindCategory(qNorm);
+      if(fc){
+        const retry = applyFilters(scope, rooms, fc.topic, []);
+        if(retry.length){
+          filtered = retry; effTopic = fc.topic; effKeywords = [];
+          fuzzyNotes.push(`เดาหมวดหมู่เป็น "${fc.topic.category || fc.topic.keywords[0]}" (ความใกล้เคียง ${Math.round(fc.score*100)}%)`);
+        }
+      }
+    }
+    // ชั้นที่ 3: เดาว่าผู้ใช้น่าจะหมายถึง "ห้อง/สถานที่" แห่งใดแห่งหนึ่ง
+    if(!filtered.length && !rooms.length){
+      const fr = fuzzyFindRoom(query);
+      if(fr){
+        const retry = applyFilters(scope, [fr.room], null, []);
+        if(retry.length){
+          filtered = retry; effRooms = [fr.room]; effTopic = null; effKeywords = [];
+          fuzzyNotes.push(`เดาสถานที่เป็น "${fr.room}" (ความใกล้เคียง ${Math.round(fr.score*100)}%)`);
+        }
+      }
+    }
+    // ชั้นที่ 4: เจอเงื่อนไขครบแต่ "ช่วงเวลา" ที่ระบุไม่มีข้อมูล -> ขยายเป็นทุกช่วงเวลาแล้วบอกผู้ใช้
+    if(!filtered.length && (scope.month !== null || scope.year || scope.date)){
+      const wide = Object.assign({}, scope, { month:null, year:null, date:null, allTime:true });
+      const retry = applyFilters(wide, effRooms, effTopic, effKeywords);
+      if(retry.length){
+        filtered = retry; effScope = wide;
+        fuzzyNotes.push("ไม่พบข้อมูลในช่วงเวลาที่ระบุ จึงขยายการค้นหาเป็นทุกช่วงเวลาให้แทน");
+      }
+    }
+
+    // ยึดเงื่อนไขที่ "ใช้จริง" หลังผ่านการเดาแล้ว เพื่อให้หัวข้อ/สถิติที่แสดงต่อจากนี้สอดคล้องกัน
+    scope = effScope; rooms = effRooms; topic = effTopic; keywords = effKeywords;
+
+    const chips = buildFilterChips(effScope, effRooms, effTopic, effKeywords);
+    fuzzyNotes.forEach(n => chips.push("≈ " + n));
+    currentHighlights = effKeywords.slice(0, 6);
+
+    // ---------- ผู้ใช้พิมพ์มาแค่ชื่อห้อง -> ตอบเป็น "โปรไฟล์ห้อง" ที่สรุปครบในหน้าจอเดียว ----------
+    if(filtered.length && effRooms.length === 1 && !effTopic && !effKeywords.length &&
+       intent.main === "list" && effScope.month === null && !effScope.date){
+      let htmlRP = `<div class="filter-chips">` + chips.map(c=>`<span class="filter-chip${c.indexOf("≈")===0?" fuzzy":""}">${escapeHtml(c)}</span>`).join("") + `</div>`;
+      htmlRP += renderRoomProfile(effRooms[0], filtered);
+      return htmlRP;
     }
 
     const totalWorkload = filtered.reduce((s,r)=> s + (r.workload||0), 0);
     const breakdown = categoryBreakdown(filtered);
 
-    let html = `<div class="filter-chips">` + chips.map(c=>`<span class="filter-chip">${escapeHtml(c)}</span>`).join("") + `</div>`;
+    let html = `<div class="filter-chips">` + chips.map(c=>`<span class="filter-chip${c.indexOf("≈")===0?" fuzzy":""}">${escapeHtml(c)}</span>`).join("") + `</div>`;
 
     if(!filtered.length){
-      html += `<div class="empty-note">ไม่พบข้อมูลที่ตรงกับคำถามนี้ ลองระบุชื่อห้อง ช่วงเวลา หรือคำสำคัญให้ชัดเจนขึ้นครับ</div>`;
+      html += `<div class="empty-note">ไม่พบข้อมูลที่ตรงกับคำถามนี้ แม้จะลองค้นแบบใกล้เคียงแล้ว — ลองระบุชื่อห้อง ช่วงเวลา หรือคำสำคัญให้ชัดเจนขึ้นครับ</div>`;
+      html += renderDidYouMean(keywords, scope);
+      html += `<div class="corr-hedge">พิมพ์ว่า <b>ช่วยอะไรได้บ้าง</b> เพื่อดูตัวอย่างคำถามทั้งหมดที่ระบบตอบได้ หรือกดหมวดหมู่ด้านล่างหน้าจอเพื่อค้นแบบไม่ต้องพิมพ์</div>`;
       return html;
     }
 
     if(intent.main === "today"){
-      html += `<div class="ans-title">งานวันนี้ (${fmtDateTh(scope.date)}) · พบ ${filtered.length} รายการ</div>`;
+      // ถ้าวันนี้ยังไม่มีการบันทึกงาน ระบบจะขยายช่วงเวลาให้เอง — ต้องบอกผู้ใช้ตรง ๆ ว่าไม่ใช่งานของวันนี้
+      const stillToday = scope.date && scope.date === askedDate;
+      if(stillToday){
+        html += `<div class="ans-title">งานวันนี้ (${fmtDateTh(askedDate)}) · พบ ${filtered.length} รายการ</div>`;
+      } else {
+        html += `<div class="ans-title">ยังไม่มีงานที่บันทึกไว้ของวันนี้ (${askedDate ? fmtDateTh(askedDate) : "-"})</div>`;
+        html += `<div class="narrative">ระบบจึงแสดง <b>รายการล่าสุดที่มีอยู่จริงในชีท</b> ให้แทน (${filtered.length} รายการ) — หากเพิ่งบันทึกงานเข้าไป ลองกด "ซิงก์ข้อมูลล่าสุด" อีกครั้งครับ</div>`;
+      }
       html += renderBreakdown(breakdown, filtered.length);
       html += renderRecordList(filtered, intent.wantsList ? 15 : 10);
-      html += renderExportBar(filtered, "งานวันนี้ " + fmtDateTh(scope.date));
+      html += renderExportBar(filtered, stillToday ? ("งานวันนี้ " + fmtDateTh(askedDate)) : "รายการล่าสุด");
       return html;
     }
 
@@ -1535,9 +2348,11 @@
         <div class="ans-stat"><div class="n">${filtered.length}</div><div class="l">จำนวนครั้ง</div></div>
         <div class="ans-stat"><div class="n">${fmtNum(totalWorkload)}</div><div class="l">รวมภาระงาน (หน่วย)</div></div>
       </div>`;
+      html += buildNarrative(filtered, null);
       html += renderBreakdown(breakdown, filtered.length);
       // ถ้าคำถามมีคำว่า "อะไรบ้าง" ด้วย ให้แสดงรายการแบบเต็มมากขึ้น ไม่ใช่แค่ตัวเลข
       html += renderRecordList(filtered, intent.wantsList ? 15 : 5);
+      html += renderInsights(filtered);
       html += renderExportBar(filtered, "ผลการค้นหา");
       return html;
     }
@@ -1556,6 +2371,7 @@
         ? "สรุปผลการทำงานเดือน" + monthNamesTh[scope.month] + (scope.year ? " " + (scope.year+543) : "")
         : (rooms.length ? "สรุปภาระงานห้อง " + rooms.join(", ") : "สรุปภาระงานตามคำถาม");
       html += `<div class="ans-title">${escapeHtml(title)}</div>`;
+      html += buildNarrative(filtered, null);
       html += `<div class="ans-stats">
         <div class="ans-stat"><div class="n">${filtered.length}</div><div class="l">งานทั้งหมด</div></div>
         <div class="ans-stat"><div class="n">${fmtNum(totalWorkload)}</div><div class="l">รวมภาระงาน (หน่วย)</div></div>
@@ -1588,14 +2404,17 @@
         html += `<div style="font-size:12px; font-weight:600; margin:12px 0 4px; color:var(--text-soft);">รายการทั้งหมด</div>`;
         html += renderRecordList(filtered, intent.wantsList ? 15 : 10);
       }
+      html += renderInsights(filtered);
       html += renderExportBar(filtered, title);
       return html;
     }
 
     // default: list mode
     html += `<div class="ans-title">พบ ${filtered.length} รายการ · รวมภาระงาน ${fmtNum(totalWorkload)} หน่วย</div>`;
+    html += buildNarrative(filtered, null);
     html += renderBreakdown(breakdown, filtered.length);
     html += renderRecordList(filtered, intent.wantsList ? 15 : 10);
+    html += renderInsights(filtered);
     html += renderExportBar(filtered, "ผลการค้นหา");
     return html;
   }
@@ -1614,16 +2433,30 @@
     return html;
   }
 
+  // คำค้นที่ใช้อยู่ตอนนี้ สำหรับไฮไลต์ในผลลัพธ์ให้ผู้ใช้เห็นว่า "ตรงตรงไหน"
+  let currentHighlights = [];
+  function highlightText(text){
+    let safe = escapeHtml(text || "");
+    if(!currentHighlights.length) return safe;
+    currentHighlights.forEach(k=>{
+      if(!k || k.length < 2) return;
+      const esc = escapeHtml(k).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      try{ safe = safe.replace(new RegExp(esc, "gi"), m => `<span class="hl">${m}</span>`); }catch(e){}
+    });
+    return safe;
+  }
+
   function renderRecordList(list, maxShow, sortByDate){
     if(sortByDate !== false){
       list = [...list].sort((a,b)=> b.date.localeCompare(a.date));
     }
     let html = "";
     list.slice(0,maxShow).forEach(r=>{
+      const bad = (r.status||"").trim() && (r.status||"").trim() !== "สำเร็จ";
       html += `<div class="record-item">
-        <div class="record-top"><span class="rd">${fmtDateTh(r.date)}</span><span>${escapeHtml(r.room)} · ${escapeHtml(r.category)}</span></div>
-        <div class="record-detail">${escapeHtml(r.detail)}</div>
-        ${r.note ? `<div class="record-note">หมายเหตุ: ${escapeHtml(r.note)}</div>` : ""}
+        <div class="record-top"><span class="rd">${fmtDateTh(r.date)}</span><span>${escapeHtml(r.room)} · ${escapeHtml(r.category)}${bad ? ` <span class="record-flag">${escapeHtml(r.status)}</span>` : ""}</span></div>
+        <div class="record-detail">${highlightText(r.detail)}</div>
+        ${r.note ? `<div class="record-note">หมายเหตุ: ${highlightText(r.note)}</div>` : ""}
       </div>`;
     });
     if(list.length > maxShow){
@@ -1665,18 +2498,77 @@
     });
     // อ่านคำตอบของผู้ช่วยออกเสียง (ถ้าไม่ได้ปิดเสียงไว้)
     if(role === 'assistant'){
+      animateNumbers(bubble);
       speakText(htmlToSpeechText(contentHtml));
     }
   }
 
+  // ---- เอฟเฟกต์ตัวเลขวิ่งขึ้น ทำให้ค่าสถิติ "รู้สึกมีชีวิต" และดึงสายตาไปที่ตัวเลขสำคัญ ----
+  function animateNumbers(root){
+    if(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    root.querySelectorAll('.ans-stat .n, .metric-num').forEach(el=>{
+      const raw = el.textContent.trim();
+      const m = raw.match(/^([+\-]?)([\d,]+(?:\.\d+)?)(.*)$/);
+      if(!m) return;
+      const sign = m[1], target = parseFloat(m[2].replace(/,/g,"")), suffix = m[3];
+      if(isNaN(target) || target === 0) return;
+      const decimals = (m[2].split(".")[1] || "").length;
+      const dur = 520, t0 = performance.now();
+      function step(now){
+        const p = Math.min(1, (now - t0) / dur);
+        const eased = 1 - Math.pow(1 - p, 3);
+        const val = target * eased;
+        el.textContent = sign + val.toLocaleString('en-US', {minimumFractionDigits:decimals, maximumFractionDigits:decimals}) + suffix;
+        if(p < 1) requestAnimationFrame(step);
+      }
+      el.textContent = sign + "0" + suffix;
+      requestAnimationFrame(step);
+    });
+  }
+
+  // ---- ตัวบ่งชี้ "กำลังค้นข้อมูล" ให้ผู้ใช้รู้ว่าระบบกำลังทำงาน ไม่ใช่ค้าง ----
+  const THINKING_LINES = [
+    "กำลังค้นข้อมูลในชีท…",
+    "กำลังจับคู่คำค้นกับข้อมูลจริง…",
+    "กำลังคำนวณสถิติและสรุปผล…",
+    "กำลังตรวจคำใกล้เคียง (Fuzzy)…"
+  ];
+  function showTyping(){
+    const row = document.createElement('div');
+    row.className = 'msg-row assistant';
+    row.id = 'typingRow';
+    row.innerHTML = `<div class="bubble assistant"><span class="typing"><b><i></i><i></i><i></i></b>${THINKING_LINES[Math.floor(Math.random()*THINKING_LINES.length)]}</span></div>`;
+    elChatScroll.appendChild(row);
+    elChatScroll.scrollTop = elChatScroll.scrollHeight;
+    return row;
+  }
+
+  let busy = false;
   function handleSend(){
+    if(busy) return;
     const q = elChatInput.value.trim();
     if(!q) return;
     addMessage('user', escapeHtml(q));
     elChatInput.value = "";
     autoResize();
-    const answerHtml = renderAnswer(q);
-    addMessage('assistant', answerHtml);
+
+    busy = true;
+    elSendBtn.disabled = true;
+    const typingRow = showTyping();
+    setTimeout(()=>{
+      let answerHtml;
+      try{
+        answerHtml = renderAnswer(q);
+      }catch(err){
+        answerHtml = `<div class="ans-title">ขออภัยครับ เกิดข้อผิดพลาดในการประมวลผลคำถามนี้</div>
+          <div class="empty-note">ลองถามใหม่ด้วยถ้อยคำที่สั้นลง หรือพิมพ์ว่า "ช่วยอะไรได้บ้าง" เพื่อดูตัวอย่างคำถามครับ</div>
+          <div class="corr-hedge">รายละเอียดทางเทคนิค: ${escapeHtml(String(err && err.message || err))}</div>`;
+      }
+      typingRow.remove();
+      addMessage('assistant', answerHtml);
+      busy = false;
+      elSendBtn.disabled = false;
+    }, 260);
   }
 
   // ================= VOICE (พูดถาม / ฟังคำตอบ) =================
@@ -1834,7 +2726,12 @@
     "แนวโน้ม",
     "สรุปผลรายเดือน",
     "อาคารไหนมีปัญหามากที่สุด",
-    "ช่วยสรุปรายงานผู้บริหาร"
+    "ห้องไหนเสี่ยงเกิดซ้ำ",
+    "วันไหนงานเข้าเยอะที่สุด",
+    "งานที่หนักที่สุด",
+    "งานที่ไม่สำเร็จ",
+    "ช่วยสรุปรายงานผู้บริหาร",
+    "ช่วยอะไรได้บ้าง"
   ];
   elExamples.innerHTML = EXAMPLE_QUESTIONS.map(q => `<button class="example-chip">${escapeHtml(q)}</button>`).join("");
   Array.from(elExamples.children).forEach((btn,i)=>{
@@ -2041,11 +2938,15 @@
         }
         const newRecords = gvizToRecords(response.table);
         if(!newRecords.length){ fail('ไม่พบแถวข้อมูลในชีท'); return; }
+        const before = records.length;
         records = newRecords;
+        HAY_CACHE = new WeakMap();     // ล้างแคชข้อความค้นหา เพราะชุดข้อมูลเปลี่ยนใหม่ทั้งหมด
         rebuildVocab();
         renderMetrics();
         renderQuickSearch();
         setSyncState('live', 'ซิงก์สดล่าสุด ' + fmtTime(new Date()) + ' น.');
+        const diff = newRecords.length - before;
+        toast('ซิงก์สำเร็จ · ' + newRecords.length + ' รายการ' + (diff > 0 ? ' (ใหม่ +' + diff + ')' : ''), 'ok');
         finish();
       }catch(e){
         fail('อ่านข้อมูลไม่สำเร็จ: ' + e.message);
@@ -2094,23 +2995,115 @@
   syncBtn.addEventListener('click', syncStatsFromSheet);
 
   document.getElementById('exportAllXlsx').addEventListener('click', ()=>{
-    if(!lastFilteredResult){ alert('ยังไม่มีผลลัพธ์จากคำถาม ลองถามคำถามในแชทก่อนครับ'); return; }
+    if(!lastFilteredResult){ toast('ยังไม่มีผลลัพธ์จากคำถาม ลองถามคำถามในแชทก่อนครับ', 'err'); return; }
     exportToExcel(lastFilteredResult, "DWMS-" + lastFilteredTitle.replace(/[^\u0E00-\u0E7Fa-zA-Z0-9]+/g,"-").slice(0,40));
   });
   document.getElementById('exportAllPdf').addEventListener('click', ()=>{
-    if(!lastFilteredResult){ alert('ยังไม่มีผลลัพธ์จากคำถาม ลองถามคำถามในแชทก่อนครับ'); return; }
+    if(!lastFilteredResult){ toast('ยังไม่มีผลลัพธ์จากคำถาม ลองถามคำถามในแชทก่อนครับ', 'err'); return; }
     exportToPdf(lastFilteredResult, lastFilteredTitle);
   });
   document.getElementById('exportAllTxt').addEventListener('click', ()=>{
-    if(!lastFilteredResult){ alert('ยังไม่มีผลลัพธ์จากคำถาม ลองถามคำถามในแชทก่อนครับ'); return; }
+    if(!lastFilteredResult){ toast('ยังไม่มีผลลัพธ์จากคำถาม ลองถามคำถามในแชทก่อนครับ', 'err'); return; }
     exportToTxt(lastFilteredResult, "DWMS-" + lastFilteredTitle.replace(/[^\u0E00-\u0E7Fa-zA-Z0-9]+/g,"-").slice(0,40), lastFilteredTitle);
   });
   updateLastResultLabel();
 
+  // ================= ธีมไดนามิก / ลูกเล่น UI =================
+  // โทนสีทั้งระบบผูกกับตัวแปร --hue ตัวเดียว จึงเปลี่ยนได้ทันทีทั้งหน้าโดยไม่ต้องโหลดใหม่
+  const HUE_PRESETS = [
+    { name:"ฟ้าคราม",   hue:208, hue2:192 },
+    { name:"ฟ้าทะเล",   hue:195, hue2:172 },
+    { name:"น้ำเงินเข้ม", hue:224, hue2:206 },
+    { name:"ฟ้าม่วง",    hue:246, hue2:218 }
+  ];
+  const elHueDots = document.getElementById('hueDots');
+  const elThemeBtn = document.getElementById('themeBtn');
+  const elThemeLabel = document.getElementById('themeLabel');
+  const elToastWrap = document.getElementById('toastWrap');
+
+  function lsGet(k, d){ try{ return localStorage.getItem(k) || d; }catch(e){ return d; } }
+  function lsSet(k, v){ try{ localStorage.setItem(k, v); }catch(e){} }
+
+  let baseHue = parseInt(lsGet('dwmsHue', '208'), 10) || 208;
+  let baseHue2 = parseInt(lsGet('dwmsHue2', '192'), 10) || 192;
+
+  function applyHue(h, h2){
+    baseHue = h; baseHue2 = h2;
+    document.documentElement.style.setProperty('--hue', h);
+    document.documentElement.style.setProperty('--hue2', h2);
+    lsSet('dwmsHue', String(h)); lsSet('dwmsHue2', String(h2));
+    Array.from(elHueDots.children).forEach(btn=>{
+      btn.classList.toggle('active', parseInt(btn.dataset.hue,10) === h);
+    });
+  }
+
+  elHueDots.innerHTML = HUE_PRESETS.map(p=>
+    `<button class="hue-dot" type="button" data-hue="${p.hue}" data-hue2="${p.hue2}" title="${p.name}"
+      style="background:linear-gradient(135deg, hsl(${p.hue} 85% 52%), hsl(${p.hue2} 88% 50%));"></button>`
+  ).join("");
+  Array.from(elHueDots.children).forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      applyHue(parseInt(btn.dataset.hue,10), parseInt(btn.dataset.hue2,10));
+      toast("เปลี่ยนโทนสีเรียบร้อย 🎨");
+    });
+  });
+  applyHue(baseHue, baseHue2);
+
+  function applyTheme(mode){
+    document.documentElement.setAttribute('data-theme', mode);
+    elThemeBtn.firstElementChild.textContent = mode === 'dark' ? '☀️' : '🌙';
+    elThemeLabel.textContent = mode === 'dark' ? 'สว่าง' : 'กลางคืน';
+    lsSet('dwmsTheme', mode);
+  }
+  let themeMode = lsGet('dwmsTheme', '') ||
+    ((window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light');
+  applyTheme(themeMode);
+  elThemeBtn.addEventListener('click', ()=>{
+    themeMode = (themeMode === 'dark') ? 'light' : 'dark';
+    applyTheme(themeMode);
+  });
+
+  // ขยับเฉดสีทีละนิดตามเวลา ให้หน้าเว็บดู "หายใจ" ได้ โดยไม่รบกวนการอ่าน
+  let hueDrift = 0;
+  setInterval(()=>{
+    hueDrift = (hueDrift + 1) % 360;
+    const delta = Math.sin(hueDrift * Math.PI / 180) * 5;   // แกว่งไม่เกิน ±5 องศา
+    document.documentElement.style.setProperty('--hue', (baseHue + delta).toFixed(1));
+    document.documentElement.style.setProperty('--hue2', (baseHue2 + delta).toFixed(1));
+  }, 900);
+
+  // ข้อความแจ้งเตือนมุมจอ (ใช้แทน alert ที่ขัดจังหวะการใช้งาน)
+  function toast(msg, kind){
+    const el = document.createElement('div');
+    el.className = 'toast' + (kind ? ' ' + kind : '');
+    el.textContent = msg;
+    elToastWrap.appendChild(el);
+    setTimeout(()=>{ el.classList.add('out'); setTimeout(()=> el.remove(), 300); }, 3200);
+  }
+
+  // ทางลัดคีย์บอร์ด: "/" = โฟกัสช่องพิมพ์, Ctrl/Cmd+K = ล้างแชท
+  document.addEventListener('keydown', (e)=>{
+    if(e.key === '/' && document.activeElement !== elChatInput){
+      e.preventDefault(); elChatInput.focus();
+    }
+    if((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k'){
+      e.preventDefault();
+      elChatScroll.innerHTML = "";
+      addMessage('assistant', `<div class="ans-title">ล้างหน้าจอแล้ว ✨</div><div style="font-size:12.5px;color:var(--text-soft);">พร้อมรับคำถามใหม่ครับ — พิมพ์ "ช่วยอะไรได้บ้าง" เพื่อดูตัวอย่างคำถามทั้งหมด</div>`);
+    }
+  });
+
   // ================= INIT =================
   rebuildVocab();
   renderMetrics();
-  addMessage('assistant', `<div class="ans-title">สวัสดีครับ 👋</div><div style="font-size:12.5px; color:var(--text-soft);">พิมพ์ "วิเคราะห์ข้อมูล" เพื่อดูภาพรวมทั้งหมดในคำตอบเดียว หรือถามเจาะจงได้ เช่น จัดอันดับ เปรียบเทียบเดือน แนวโน้ม KPI ความสัมพันธ์เชิงเวลาระหว่าง 2 หัวข้อ — ทุกคำตอบที่มีรายการข้อมูลสามารถกดส่งออกเป็น Excel/PDF/TXT ได้ทันที</div>`);
+  addMessage('assistant', `<div class="ans-title">สวัสดีครับ 👋 ผมคือผู้ช่วยค้นข้อมูลภาระงาน DWMS</div>
+    <div class="narrative">ถามได้ทั้ง <b>พิมพ์</b> และ <b>พูด</b> 🎤 — ระบบทนต่อการสะกดผิดและเสียงเพี้ยน (Fuzzy Matching) ถ้าไม่ตรงเป๊ะแต่ใกล้เคียงพอ จะยังหาเจอและแจ้งกำกับไว้เสมอว่าเป็น <b>ผลลัพธ์ใกล้เคียงที่สุด</b> ไม่ใช่คำตอบตรงตัว</div>
+    <div style="font-size:12.5px; color:var(--text-soft);">เริ่มเร็วที่สุด: พิมพ์ <b>วิเคราะห์ข้อมูล</b> เพื่อดูภาพรวมทั้งหมดในคำตอบเดียว · หรือพิมพ์ <b>ช่วยอะไรได้บ้าง</b> เพื่อดูรายการคำถามที่รองรับทั้งหมด · ทุกคำตอบที่มีรายการข้อมูลกดส่งออกเป็น Excel / PDF / TXT ได้ทันที</div>
+    <div class="dym">
+      <button class="dym-chip" data-query="วิเคราะห์ข้อมูล">📊 วิเคราะห์ข้อมูล</button>
+      <button class="dym-chip" data-query="ช่วยอะไรได้บ้าง">🧭 ช่วยอะไรได้บ้าง</button>
+      <button class="dym-chip" data-query="ห้องไหนเสี่ยงเกิดซ้ำ">🛡️ จุดเฝ้าระวัง</button>
+    </div>`);
   setSyncState('', 'แสดงข้อมูลสำรองที่บันทึกไว้ในไฟล์');
   syncFromSheet();
   syncStatsFromSheet();
