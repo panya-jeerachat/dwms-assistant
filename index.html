@@ -577,7 +577,8 @@
     <div class="quick-search" id="quickSearch"></div>
   </div>
 
-  <p class="foot-note">ระบบค้นหา/สรุปข้อมูลอัตโนมัติจากคำถามภาษาไทย รองรับการสะกดผิด/เสียงเพี้ยน (Fuzzy Matching) อาจตีความคลาดเคลื่อนได้หากคำถามกำกวมมาก</p>
+  <p class="foot-note">ระบบค้นหา/สรุปข้อมูลอัตโนมัติจากคำถามภาษาไทย รองรับการสะกดผิด/เสียงเพี้ยน (Fuzzy Matching) อาจตีความคลาดเคลื่อนได้หากคำถามกำกวมมาก — ตรวจสอบ "ตัวกรองที่ใช้" ที่แสดงในทุกคำตอบเพื่อยืนยันความถูกต้อง<br>
+  ทางลัด: กด <span class="kbd">/</span> เพื่อพิมพ์คำถาม · <span class="kbd">Ctrl</span>+<span class="kbd">K</span> ล้างแชท · พิมพ์ <b>ช่วยอะไรได้บ้าง</b> เพื่อดูคำสั่งทั้งหมด</p>
 
   <footer class="site-footer">
     <p>© 2569 คณะวิศวกรรมศาสตร์ มหาวิทยาลัยมหาสารคาม</p>
@@ -607,6 +608,11 @@
   const monthAbbrTh = ["ม.ค.","ก.พ.","มี.ค.","เม.ย.","พ.ค.","มิ.ย.","ก.ค.","ส.ค.","ก.ย.","ต.ค.","พ.ย.","ธ.ค."];
 
   const todayObj = new Date();
+
+  // รูปแบบการถามถึง "วงรอบการประเมิน" ที่ยืดหยุ่นพอจะรับได้ทั้งพิมพ์และพูด
+  // รองรับ: "รอบที่1" / "วงรอบการประเมินที่ 1" / "รอบ 2 ปี 2569" / "รอบที่ ๑"
+  // (คำว่า "แรก/สุดท้าย" และคำอ่านตัวเลขไทยถูกแปลงเป็นเลขตั้งแต่ขั้น preprocessQuery แล้ว)
+  const EVAL_CYCLE_RE = /(?:วง)?รอบ\s*(?:การประเมิน)?\s*(?:ที่)?\s*([12])(?!\d)/;
 
   // ---- Topic / category keyword dictionary ----
   // แต่ละรายการ: keywords ที่พบในคำถาม -> กรองด้วยคอลัมน์ "ประเภทงานบริการ" ตรงตัว
@@ -1036,7 +1042,8 @@
     else if(has("ไม่สำเร็จ","ล้มเหลว","ค้างอยู่","ยังไม่เสร็จ","ปัญหาที่แก้ไม่ได้")) main = "failed";
     else if(has("หนักที่สุด","ภาระงานสูงสุด","ภาระงานมากที่สุด","งานใหญ่ที่สุด","ใช้เวลานานที่สุด")) main = "heaviest";
     else if(qNorm.indexOf("วิเคราะห์ข้อมูล") !== -1) main = "fullAnalysis";
-    else if(/รอบ.{0,15}?([12๑๒])/.test(qNorm)) main = "evalCycle";
+    else if(EVAL_CYCLE_RE.test(qNorm) ||
+            /(?:วง)?รอบ[^0-9]{0,12}(?:ปัจจุบัน|นี้|ตอนนี้|ที่แล้ว|ก่อนหน้า|ที่ผ่านมา)/.test(qNorm)) main = "evalCycle";
     else if(qNorm.indexOf("kpi") !== -1) main = "kpi";
     else if(qNorm.indexOf("ผู้บริหาร") !== -1 || qNorm.indexOf("executive") !== -1 ||
             qNorm.indexOf("ป.03") !== -1 || qNorm.indexOf("ป03") !== -1 || qNorm.indexOf("แนะนำ") !== -1) main = "executive";
@@ -1142,6 +1149,68 @@
     return (s||"").replace(/[๐-๙]/g, ch => String(THAI_DIGITS.indexOf(ch)));
   }
 
+  // ---- ตัวแปลง "คำอ่านตัวเลขภาษาไทย" -> ตัวเลขจริง ----
+  // ปัญหาที่พบจากการใช้งานจริง: เวลาพูด Speech-to-Text มักถอดตัวเลขเป็นคำอ่าน
+  // เช่น พูด "วงรอบการประเมินที่หนึ่งปี 2570" จะได้คำว่า "หนึ่ง" ไม่ใช่เลข 1
+  // ทำให้ตัวจับรูปแบบที่รอเจอเลขอารบิกหาไม่เจอ ทั้งที่ความหมายตรงกันทุกประการ
+  const NUM_WORD = {
+    "ศูนย์":0,"หนึ่ง":1,"เอ็ด":1,"สอง":2,"ยี่":2,"สาม":3,"สี่":4,"ห้า":5,
+    "หก":6,"เจ็ด":7,"แปด":8,"เก้า":9
+  };
+  const NUM_UNIT = { "สิบ":10, "ร้อย":100, "พัน":1000, "หมื่น":10000, "แสน":100000 };
+  const NUM_TOKENS = Object.keys(NUM_WORD).concat(Object.keys(NUM_UNIT), ["ล้าน"])
+                       .sort((a,b)=> b.length - a.length);
+  const NUM_RUN_RE = new RegExp("(?:" + NUM_TOKENS.join("|") + ")+", "g");
+  // คำที่อยู่ข้างหน้าแล้วบ่งบอกว่า "ตัวเลขแน่ ๆ" — ใช้ตัดสินกรณีคำเดี่ยวที่อาจเป็นส่วนของคำอื่น
+  const NUM_CUES = ["ที่","รอบ","ปี","ชั้น","อาคาร","จำนวน","ครั้ง","เดือน","ห้อง","วันที่","เบอร์","หมายเลข","ตึก"];
+
+  function parseThaiNumberRun(run){
+    const toks = [];
+    let i = 0;
+    while(i < run.length){
+      let matched = null;
+      for(const t of NUM_TOKENS){
+        if(run.startsWith(t, i)){ matched = t; break; }
+      }
+      if(!matched) return null;
+      toks.push(matched);
+      i += matched.length;
+    }
+    // กรณีอ่านทีละหลัก เช่น "สองห้าหกเก้า" = 2569 (พบบ่อยมากกับปี พ.ศ. และเลขห้อง)
+    const allDigits = toks.every(t => NUM_WORD[t] !== undefined && t !== "ยี่" && t !== "เอ็ด");
+    if(allDigits && toks.length >= 2){
+      return toks.map(t => NUM_WORD[t]).join("");
+    }
+    // กรณีอ่านตามหลักค่าประจำตำแหน่ง เช่น "สองพันห้าร้อยเจ็ดสิบ" = 2570
+    let total = 0, section = 0, current = 0, seen = false;
+    toks.forEach(t=>{
+      if(NUM_WORD[t] !== undefined){ current = NUM_WORD[t]; seen = true; }
+      else if(NUM_UNIT[t]){ section += (current || 1) * NUM_UNIT[t]; current = 0; seen = true; }
+      else if(t === "ล้าน"){ total += (section + current) * 1000000; section = 0; current = 0; seen = true; }
+    });
+    if(!seen) return null;
+    return String(total + section + current);
+  }
+
+  function thaiNumeralsToDigits(text){
+    return (text||"").replace(NUM_RUN_RE, (run, offset, whole)=>{
+      const value = parseThaiNumberRun(run);
+      if(value === null) return run;
+      // คำเดี่ยวสั้น ๆ เสี่ยงเป็นส่วนหนึ่งของคำอื่น (เช่น "ศูนย์หม่อนไหม", "ห้ามใช้")
+      // จึงแปลงเฉพาะเมื่อมีคำบ่งชี้นำหน้า หรือหลังคำนั้นไม่ใช่พยัญชนะไทยต่อเนื่อง
+      const isSingle = !/(?:สิบ|ร้อย|พัน|หมื่น|แสน|ล้าน)/.test(run) &&
+                       run.length <= 6 && parseThaiNumberRun(run).length === 1;
+      if(isSingle){
+        const before = whole.slice(Math.max(0, offset - 8), offset);
+        const after = whole.slice(offset + run.length, offset + run.length + 1);
+        const hasCue = NUM_CUES.some(c => before.indexOf(c) !== -1);
+        const followedByThai = /[\u0E01-\u0E2E]/.test(after);
+        if(!hasCue && followedByThai) return run;   // น่าจะเป็นส่วนของคำอื่น ปล่อยไว้เหมือนเดิม
+      }
+      return " " + value + " ";
+    });
+  }
+
   // คำที่ Speech-to-Text ภาษาไทยมักถอดออกมาไม่ตรงกับที่พูด (รวบรวมจากการใช้งานจริง)
   // แปลงให้เป็นรูปมาตรฐานที่ตรงกับข้อมูลในชีทก่อนเข้าสู่ขั้นตอนค้นหา
   const STT_FIXES = [
@@ -1170,6 +1239,11 @@
     let s = toArabicDigits((q||"").toString());
     s = s.replace(/[\u200B\uFEFF]/g, "");          // อักขระล่องหนที่ติดมาจากการคัดลอกข้อความ
     s = s.replace(/[“”„]/g,'"').replace(/[‘’]/g,"'");
+    // คำบอกลำดับที่พูดกันจริงแต่ไม่ใช่ตัวเลข -> แปลงเป็นเลขรอบให้ก่อน
+    s = s.replace(/(วง)?รอบ(การประเมิน)?(ที่)?\s*แรก/g, "รอบที่ 1 ");
+    s = s.replace(/(วง)?รอบ(การประเมิน)?(ที่)?\s*(สุดท้าย|หลัง|ท้าย)/g, "รอบที่ 2 ");
+    // แปลงคำอ่านตัวเลขไทยเป็นตัวเลข ("ที่หนึ่ง" -> "ที่ 1 ", "สองพันห้าร้อยเจ็ดสิบ" -> "2570")
+    s = thaiNumeralsToDigits(s);
     const lower = s.toLowerCase();
     let fixed = lower;
     STT_FIXES.forEach(([re, to])=>{ fixed = fixed.replace(re, to); });
@@ -1793,9 +1867,15 @@
     return renderKpiCard(sorted[sorted.length-1], sorted);
   }
 
-  // ---- วงรอบการประเมิน (ป.03): รอบที่ 1 = 1 ก.ย. – 29/28 ก.พ. (ข้ามปี), รอบที่ 2 = 1 มี.ค. – 31 ส.ค. ----
-  // การใส่ "ปี" หมายถึงปี พ.ศ. ของ "รอบที่ 2" เป็นหลัก (รอบที่ 1 ของปีเดียวกันจะเริ่มเดือนก.ย.ของปีก่อนหน้า)
-  // ตัวอย่าง: "รอบที่ 1 2569" -> 1 ก.ย. 2568 – 29 ก.พ. 2569 ตรงกับที่ระบุไว้จริง
+  // ---- วงรอบการประเมิน (ป.03) ----
+  // นิยามที่ใช้จริงของคณะฯ:
+  //   รอบที่ 1 ของปี พ.ศ. Y = 1 กันยายน (Y-1)  ถึง  28/29 กุมภาพันธ์ Y   (คร่อมปี)
+  //   รอบที่ 2 ของปี พ.ศ. Y = 1 มีนาคม Y       ถึง  31 สิงหาคม Y
+  // ตัวอย่างตรวจสอบ:
+  //   รอบ 1 ปี 2570 = 1 ก.ย. 2569 – 28 ก.พ. 2570
+  //   รอบ 2 ปี 2570 = 1 มี.ค. 2570 – 31 ส.ค. 2570
+  //   รอบ 1 ปี 2571 = 1 ก.ย. 2570 – 29 ก.พ. 2571  (ปีอธิกสุรทิน ค.ศ. 2028)
+  // วันสิ้นเดือนกุมภาพันธ์คำนวณจากปฏิทินจริงเสมอ จึงใช้ได้กับปีถัด ๆ ไปโดยไม่ต้องแก้โค้ด
   function evalCycleRange(cycleNum, buddhistYear){
     const gYear = buddhistYear - 543;
     if(cycleNum === 1){
@@ -1807,19 +1887,50 @@
     return { start: gYear+"-03-01", end: gYear+"-08-31" };
   }
 
+  function isoToday(){
+    return todayObj.getFullYear() + "-" + String(todayObj.getMonth()+1).padStart(2,"0") + "-" + String(todayObj.getDate()).padStart(2,"0");
+  }
+
+  // วงรอบที่ "วันนี้" ตกอยู่ — ใช้ตอบคำถามอย่าง "วงรอบปัจจุบัน" และใช้บอกสถานะของวงรอบที่ถาม
+  function currentCycle(){
+    const gy = todayObj.getFullYear(), m = todayObj.getMonth();   // 0 = ม.ค.
+    if(m >= 8) return { cycleNum:1, buddhistYear: gy + 1 + 543 };  // ก.ย.–ธ.ค. -> รอบ 1 ของปีถัดไป
+    if(m <= 1) return { cycleNum:1, buddhistYear: gy + 543 };      // ม.ค.–ก.พ. -> ยังอยู่รอบ 1 ของปีนี้
+    return { cycleNum:2, buddhistYear: gy + 543 };                 // มี.ค.–ส.ค. -> รอบ 2 ของปีนี้
+  }
+  function prevCycle(c){
+    return c.cycleNum === 1 ? { cycleNum:2, buddhistYear:c.buddhistYear-1 } : { cycleNum:1, buddhistYear:c.buddhistYear };
+  }
+  function nextCycle(c){
+    return c.cycleNum === 1 ? { cycleNum:2, buddhistYear:c.buddhistYear } : { cycleNum:1, buddhistYear:c.buddhistYear+1 };
+  }
+  function cycleLabel(c){ return "วงรอบการประเมินที่ " + c.cycleNum + " ปี " + c.buddhistYear; }
+
   function extractEvalCycle(qOriginal, qNorm){
-    const m = qNorm.match(/รอบ.{0,15}?([12๑๒])/);
-    if(!m) return null;
+    // คำถามแบบอ้างอิงสัมพัทธ์ ที่ไม่มีเลขรอบ/เลขปีเลย เช่น "วงรอบปัจจุบัน" "รอบที่แล้ว"
+    const relPrev = /(?:วง)?รอบ[^0-9]{0,12}(?:ที่แล้ว|ก่อนหน้า|ที่ผ่านมา|ก่อน)/.test(qNorm);
+    const relNow  = /(?:วง)?รอบ[^0-9]{0,12}(?:ปัจจุบัน|นี้|ตอนนี้|นี่)/.test(qNorm);
+    const m = qNorm.match(EVAL_CYCLE_RE);
+    if(!m){
+      if(relPrev) return prevCycle(currentCycle());
+      if(relNow)  return currentCycle();
+      return null;
+    }
     let cycleNum = m[1];
     cycleNum = (cycleNum === "๑") ? 1 : (cycleNum === "๒") ? 2 : parseInt(cycleNum);
-    const yearMatch = qNorm.match(/(\d{4})/);
-    let buddhistYear;
-    if(yearMatch){
-      const raw = parseInt(yearMatch[1]);
-      buddhistYear = raw >= 2400 ? raw : raw + 543;
-    } else {
-      buddhistYear = todayObj.getFullYear() + 543;
+
+    // หา "ปี" ให้ยืดหยุ่น: รองรับทั้ง "ปี 2569", "พ.ศ. 2570", "ปี 69" และปีที่พูดเป็นคำอ่าน
+    // ข้อควรระวัง: ต้องไม่หยิบเลขรอบ (1/2) มาเป็นปีโดยบังเอิญ จึงอ่านเฉพาะเลข 2 หรือ 4 หลัก
+    let buddhistYear = null;
+    const yearCued = qNorm.match(/(?:ปี|พ\.?ศ\.?)\s*(\d{2,4})/);
+    const yearAny  = qNorm.match(/(\d{4})/);
+    const rawYear = yearCued ? parseInt(yearCued[1]) : (yearAny ? parseInt(yearAny[1]) : null);
+    if(rawYear !== null){
+      if(rawYear >= 2400) buddhistYear = rawYear;               // พ.ศ. เต็ม
+      else if(rawYear >= 1900) buddhistYear = rawYear + 543;    // ค.ศ. เต็ม
+      else if(rawYear >= 40 && rawYear <= 99) buddhistYear = 2500 + rawYear;  // พูดสั้น ๆ เช่น "ปี 70"
     }
+    if(buddhistYear === null) buddhistYear = todayObj.getFullYear() + 543;
     return { cycleNum, buddhistYear };
   }
 
@@ -1842,11 +1953,53 @@
     const avgSuccess = filtered.length ? (successCount / filtered.length * 100) : null;
 
     const title = "สรุปภาระงานวงรอบการประเมินที่ " + cycleNum + " ปี " + buddhistYear;
+    const me = { cycleNum, buddhistYear };
+    const today = isoToday();
+    const totalDays = daysBetween(range.start, range.end) + 1;
+
+    let state, stateColor, stateText;
+    if(today < range.start){
+      state = "future"; stateColor = "var(--text-soft)";
+      stateText = "ยังไม่เริ่ม — จะเริ่มอีก " + daysBetween(today, range.start) + " วัน";
+    } else if(today > range.end){
+      state = "past"; stateColor = "var(--success)";
+      stateText = "สิ้นสุดแล้ว (ปิดวงรอบเมื่อ " + fmtDateTh(range.end) + ")";
+    } else {
+      state = "active"; stateColor = "var(--accent)";
+      const passed = daysBetween(range.start, today) + 1;
+      stateText = "กำลังดำเนินอยู่ — ผ่านไป " + passed + " วัน จาก " + totalDays + " วัน (" + Math.round(passed/totalDays*100) + "%) เหลืออีก " + (totalDays - passed) + " วัน";
+    }
+
     let html = `<div class="ans-title">${escapeHtml(title)}</div>`;
-    html += `<div style="font-size:12px; color:var(--text-soft); margin-bottom:10px;">${fmtDateTh(range.start)} – ${fmtDateTh(range.end)}</div>`;
+    html += `<div class="narrative" style="border-left-color:${stateColor}">
+      ช่วงวงรอบ: <b>${fmtDateTh(range.start)}</b> ถึง <b>${fmtDateTh(range.end)}</b> (รวม ${totalDays} วัน)<br>
+      สถานะ: <b>${escapeHtml(stateText)}</b>
+    </div>`;
 
     if(!filtered.length){
-      html += `<div class="empty-note">ยังไม่พบข้อมูลภาระงานในช่วงวันที่นี้ (อาจเป็นช่วงอนาคตที่ยังไม่มีการบันทึก)</div>`;
+      // แยกให้ชัดว่า "ยังไม่ถึงเวลา" กับ "ถึงเวลาแล้วแต่ยังไม่ได้บันทึก" ไม่เหมือนกัน
+      if(state === "future"){
+        html += `<div class="empty-note">วงรอบนี้ <b>ยังไม่เริ่ม</b> จึงยังไม่มีภาระงานให้สรุป — สูตรช่วงวันที่แสดงด้านบนถูกต้องแล้ว ใช้เป็นกรอบวางแผนล่วงหน้าได้เลยครับ</div>`;
+      } else if(state === "active"){
+        html += `<div class="empty-note">วงรอบนี้ <b>กำลังดำเนินอยู่</b> แต่ยังไม่พบรายการภาระงานที่บันทึกไว้ในชีทภายในช่วงวันที่นี้ — หากเพิ่งบันทึกเพิ่ม ลองกดปุ่ม "ซิงก์ข้อมูลล่าสุด" ด้านบนขวาอีกครั้ง</div>`;
+      } else {
+        html += `<div class="empty-note">ไม่พบรายการภาระงานที่บันทึกไว้ในช่วงวงรอบนี้</div>`;
+      }
+      // เสนอวงรอบใกล้เคียงที่ "มีข้อมูลจริง" ให้กดดูต่อได้ทันที ไม่ต้องเดาเอง
+      const alts = [];
+      let probe = prevCycle(me);
+      for(let i=0;i<6 && alts.length<3;i++){
+        const rg = evalCycleRange(probe.cycleNum, probe.buddhistYear);
+        const n = records.filter(r => r.date >= rg.start && r.date <= rg.end).length;
+        if(n > 0) alts.push({ c: probe, n });
+        probe = prevCycle(probe);
+      }
+      if(alts.length){
+        html += `<div class="dym"><div class="dym-label">วงรอบที่มีข้อมูลบันทึกไว้แล้ว (กดเพื่อดูสรุป)</div>` +
+          alts.map(a=>`<button class="dym-chip" data-query="${escapeHtml(cycleLabel(a.c))}">${escapeHtml(cycleLabel(a.c))} · ${a.n} งาน</button>`).join("") +
+          `</div>`;
+      }
+      html += `<div class="corr-hedge">นิยามวงรอบที่ระบบใช้: <b>รอบที่ 1</b> = 1 ก.ย. ของปีก่อนหน้า ถึง 28/29 ก.พ. ของปีวงรอบ · <b>รอบที่ 2</b> = 1 มี.ค. ถึง 31 ส.ค. ของปีวงรอบ (วันสิ้นเดือน ก.พ. คำนวณจากปฏิทินจริง จึงรองรับปีอธิกสุรทินทุกปีถัดไปโดยอัตโนมัติ)</div>`;
       return html;
     }
 
@@ -1862,9 +2015,15 @@
         <div class="ans-stat"><div class="n">${fmtNum(paperSaved)}</div><div class="l">ลดการใช้กระดาษ (แผ่น)</div></div>
       </div>`;
     }
-    html += `<div style="font-size:12px; font-weight:600; margin:10px 0 4px; color:var(--text-soft);">แยกตามประเภทงาน</div>`;
+    html += `<div class="sec-label">แยกตามประเภทงาน</div>`;
     html += renderBreakdown(breakdown, filtered.length);
-    html += `<div class="corr-hedge">ใช้ช่วงวันที่ตามนิยามวงรอบการประเมิน: รอบที่ 1 = 1 ก.ย. – 28/29 ก.พ. (ข้ามปี), รอบที่ 2 = 1 มี.ค. – 31 ส.ค. · ลดกระดาษ/ลดเวลาคำนวณจากจำนวนงานชุดนี้โดยตรง (x2 แผ่น, x45 นาทีต่องาน) เพื่อให้ตัวเลขสอดคล้องกับ "งานทั้งหมด" เสมอ — ส่งออกด้านล่างเพื่อแนบเป็นหลักฐาน ป.03 ได้เลย</div>`;
+    html += renderInsights(filtered);
+    const pv = prevCycle(me), nx = nextCycle(me);
+    html += `<div class="dym"><div class="dym-label">ดูวงรอบอื่น</div>
+      <button class="dym-chip" data-query="${escapeHtml(cycleLabel(pv))}">◀ ${escapeHtml(cycleLabel(pv))}</button>
+      <button class="dym-chip" data-query="${escapeHtml(cycleLabel(nx))}">${escapeHtml(cycleLabel(nx))} ▶</button>
+      </div>`;
+    html += `<div class="corr-hedge">นิยามวงรอบ: <b>รอบที่ 1</b> = 1 ก.ย. ของปีก่อนหน้า – 28/29 ก.พ. ของปีวงรอบ · <b>รอบที่ 2</b> = 1 มี.ค. – 31 ส.ค. ของปีวงรอบ · ลดกระดาษ/ลดเวลาคำนวณจากจำนวนงานชุดนี้โดยตรง (×2 แผ่น, ×45 นาทีต่องาน) เพื่อให้ตัวเลขสอดคล้องกับ "งานทั้งหมด" เสมอ — ส่งออกด้านล่างเพื่อแนบเป็นหลักฐาน ป.03 ได้เลย</div>`;
     html += renderExportBar(filtered, title);
     return html;
   }
@@ -2155,7 +2314,19 @@
     return chips;
   }
 
+  // ห่อ renderAnswerCore อีกชั้น เพื่อแสดงให้ผู้ใช้เห็นว่า "ระบบตีความคำถามที่พูดมาเป็นอะไร"
+  // สำคัญมากกับการถามด้วยเสียง เพราะผู้ใช้จะตรวจสอบได้ทันทีว่าระบบเข้าใจตรงกับที่ตั้งใจพูดหรือไม่
   function renderAnswer(rawQuery){
+    const raw = (rawQuery||"").toString().replace(/\s+/g," ").trim();
+    const norm = preprocessQuery(raw);
+    let note = "";
+    if(norm && norm !== raw.toLowerCase()){
+      note = `<div class="filter-chips"><span class="filter-chip fuzzy">🎤 ตีความคำถามเป็น: ${escapeHtml(norm)}</span></div>`;
+    }
+    return note + renderAnswerCore(raw);
+  }
+
+  function renderAnswerCore(rawQuery){
     // ล้างคำถามให้เป็นรูปมาตรฐานก่อน (เลขไทย -> อารบิก, แก้คำที่ Speech-to-Text ฟังผิดบ่อย)
     // ทำที่จุดเดียวตรงนี้ ฟังก์ชันตีความทั้งหมดหลังจากนี้จึงได้ประโยชน์พร้อมกันทั้งระบบ
     lastRoomFuzzy = null;
