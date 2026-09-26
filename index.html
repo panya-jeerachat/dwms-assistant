@@ -495,6 +495,87 @@
   @keyframes toastIn{ from{opacity:0; transform:translateY(12px) scale(.96);} to{opacity:1; transform:none;} }
   @keyframes toastOut{ to{opacity:0; transform:translateX(16px);} }
 
+  /* ---- แผงสรุปสถานการณ์ตอนเปิดหน้า (ไม่ต้องพิมพ์ถาม) ---- */
+  .briefing{
+    background:var(--surface-glass); backdrop-filter:blur(12px);
+    border:1px solid var(--border); border-radius:14px;
+    box-shadow:var(--shadow); padding:14px 16px; margin-bottom:16px;
+  }
+  .brief-head{ display:flex; align-items:center; gap:8px; margin-bottom:10px; flex-wrap:wrap; }
+  .brief-title{ font-size:13px; font-weight:700; color:var(--accent-strong); }
+  .brief-sub{ font-size:11px; color:var(--text-soft); }
+  .brief-toggle{
+    margin-left:auto; font-family:inherit; font-size:11px; font-weight:600;
+    background:transparent; border:1px solid var(--border-strong); color:var(--text-soft);
+    border-radius:8px; padding:4px 10px; cursor:pointer; transition:all var(--speed);
+  }
+  .brief-toggle:hover{ border-color:var(--accent); color:var(--accent); }
+  .brief-grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(168px,1fr)); gap:9px; }
+  .brief-card{
+    text-align:left; font-family:inherit; cursor:pointer;
+    background:var(--surface-2); border:1px solid var(--border);
+    border-left:3px solid var(--accent); border-radius:10px;
+    padding:10px 12px; transition:all var(--speed);
+  }
+  .brief-card:hover{ transform:translateY(-2px); box-shadow:0 6px 16px var(--accent-glow); border-color:var(--accent); }
+  .brief-card.warn{ border-left-color:var(--warn); }
+  .brief-card.danger{ border-left-color:var(--danger); }
+  .brief-card.ok{ border-left-color:var(--success); }
+  .brief-card .bc-label{ font-size:10.5px; color:var(--text-soft); }
+  .brief-card .bc-value{ font-family:'IBM Plex Mono',monospace; font-size:17px; font-weight:700; color:var(--accent-strong); margin:2px 0; }
+  .brief-card .bc-note{ font-size:10.5px; color:var(--text-soft); line-height:1.5; }
+  .brief-bar{ height:5px; border-radius:3px; background:var(--accent-soft); overflow:hidden; margin-top:6px; }
+  .brief-bar i{ display:block; height:100%; background:var(--grad); border-radius:3px; }
+
+  /* ---- ตัวสร้างรายงานแบบกดเลือก (ไม่ต้องพิมพ์) ---- */
+  .builder{ margin-top:16px; padding-top:14px; border-top:1px solid var(--border); }
+  .builder-head{ display:flex; align-items:center; gap:8px; margin-bottom:10px; }
+  .builder-title{ font-size:11px; font-weight:700; color:var(--text-soft); letter-spacing:.02em; }
+  .builder-row{ display:flex; flex-wrap:wrap; gap:8px; align-items:flex-end; }
+  .builder-field{ display:flex; flex-direction:column; gap:4px; min-width:150px; flex:1; }
+  .builder-field label{ font-size:10.5px; color:var(--text-soft); }
+  .builder-field select{
+    font-family:inherit; font-size:12.5px; color:var(--text);
+    background:var(--surface); border:1px solid var(--border-strong);
+    border-radius:9px; padding:8px 10px; cursor:pointer; transition:all var(--speed);
+  }
+  .builder-field select:focus{ outline:none; border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-glow); }
+  .builder-go{
+    background:var(--grad); color:#fff; border:none; border-radius:9px;
+    padding:9px 18px; font-family:inherit; font-weight:700; font-size:12.5px; cursor:pointer;
+    box-shadow:0 4px 12px var(--accent-glow); transition:all var(--speed);
+  }
+  .builder-go:hover{ transform:translateY(-2px); filter:brightness(1.06); }
+  .builder-reset{
+    background:transparent; border:1px solid var(--border-strong); color:var(--text-soft);
+    border-radius:9px; padding:9px 13px; font-family:inherit; font-size:12px; cursor:pointer;
+  }
+  .builder-reset:hover{ border-color:var(--accent); color:var(--accent); }
+
+  /* ---- คำถามที่ปักหมุดไว้ ---- */
+  .pins{ display:flex; flex-wrap:wrap; gap:7px; margin-top:12px; align-items:center; }
+  .pins-label{ font-size:10.5px; color:var(--text-soft); margin-right:2px; }
+  .pin-chip{
+    display:inline-flex; align-items:center; gap:6px;
+    font-family:inherit; font-size:11.5px;
+    background:var(--accent-soft); color:var(--accent-strong);
+    border:1px solid transparent; border-radius:20px; padding:6px 8px 6px 13px;
+    cursor:pointer; transition:all var(--speed);
+  }
+  .pin-chip:hover{ background:var(--surface); border-color:var(--accent); transform:translateY(-2px); }
+  .pin-chip .pin-x{
+    font-size:13px; line-height:1; opacity:.55; padding:0 3px; border-radius:50%;
+  }
+  .pin-chip .pin-x:hover{ opacity:1; color:var(--danger); }
+  .pin-btn{
+    flex-shrink:0; width:40px; height:40px; border-radius:11px;
+    border:1px solid var(--border-strong); background:var(--surface);
+    font-size:15px; cursor:pointer; display:flex; align-items:center; justify-content:center;
+    transition:all var(--speed);
+  }
+  .pin-btn:hover{ background:var(--accent-soft); border-color:var(--accent); transform:translateY(-2px); }
+  .pin-btn:disabled{ opacity:.35; cursor:not-allowed; transform:none; }
+
   .foot-note{ margin-top:14px; font-size:11px; color:var(--text-faint); text-align:center; }
   .kbd{
     font-family:'IBM Plex Mono',monospace; font-size:10px; border:1px solid var(--border-strong);
@@ -559,18 +640,51 @@
 
   <div class="metric-row" id="metricRow"></div>
 
+  <div class="briefing" id="briefing" hidden></div>
+
   <div class="chat-card">
     <div class="chat-scroll" id="chatScroll"></div>
     <div class="chat-input-row">
       <button class="mic-btn" id="micBtn" type="button" title="พูดถาม (ไมโครโฟน)">🎤</button>
       <textarea class="chat-input" id="chatInput" rows="1" placeholder="เช่น EN1-204 · สรุปเดือนกรกฎาคม · ห้องไหนเสี่ยงซ้ำ · ช่วยอะไรได้บ้าง"></textarea>
       <button class="mute-btn" id="muteBtn" type="button" title="ปิด/เปิดเสียงตอบ">🔊</button>
+      <button class="pin-btn" id="pinBtn" type="button" title="ปักหมุดคำถามล่าสุด" disabled>📌</button>
       <button class="send-btn" id="sendBtn">ถาม</button>
     </div>
     <div class="voice-status" id="voiceStatus"></div>
   </div>
 
+  <div class="pins" id="pins" hidden></div>
+
   <div class="examples" id="examples"></div>
+
+  <div class="builder">
+    <div class="builder-head"><span class="builder-title">🧾 สร้างรายงานแบบกดเลือก — ไม่ต้องพิมพ์คำถาม</span></div>
+    <div class="builder-row">
+      <div class="builder-field">
+        <label for="bTime">ช่วงเวลา</label>
+        <select id="bTime"></select>
+      </div>
+      <div class="builder-field">
+        <label for="bRoom">ห้อง / สถานที่</label>
+        <select id="bRoom"></select>
+      </div>
+      <div class="builder-field">
+        <label for="bCat">ประเภทงาน</label>
+        <select id="bCat"></select>
+      </div>
+      <div class="builder-field" style="min-width:120px; flex:0 0 130px;">
+        <label for="bStatus">สถานะ</label>
+        <select id="bStatus">
+          <option value="">ทั้งหมด</option>
+          <option value="ok">เฉพาะที่สำเร็จ</option>
+          <option value="bad">เฉพาะที่ไม่สำเร็จ</option>
+        </select>
+      </div>
+      <button class="builder-go" id="bGo" type="button">สร้างรายงาน</button>
+      <button class="builder-reset" id="bReset" type="button">ล้าง</button>
+    </div>
+  </div>
 
   <div class="quick-search-panel">
     <div class="quick-search-label">ค้นหาด่วนตามหมวดหมู่</div>
@@ -1248,6 +1362,40 @@
   ];
 
   // ทำความสะอาดคำถามก่อนตีความ — เรียกครั้งเดียวที่จุดเข้า ทุกฟังก์ชันหลังจากนี้ได้ประโยชน์หมด
+  // ---- พจนานุกรมคำพ้องที่แก้ไขเองได้จากในชีท ----
+  // ตารางแก้คำด้านบนฝังอยู่ในโค้ด เพิ่มคำใหม่ต้องแก้ไฟล์ทุกครั้ง
+  // ชุดนี้จึงโหลดมาจากแท็บ "คำพ้อง" ในชีท (คอลัมน์: คำที่พูด/พิมพ์ | คำที่มีในข้อมูล)
+  // ผู้ใช้เจอคำที่ระบบไม่เข้าใจเมื่อไร พิมพ์เพิ่มในชีทได้เลย ไม่ต้องรอแก้โค้ด
+  let DYNAMIC_SYNONYMS = [];
+
+  function loadSynonymsFromCache(){
+    try{
+      const raw = localStorage.getItem('dwmsSynonyms');
+      if(raw) DYNAMIC_SYNONYMS = JSON.parse(raw) || [];
+    }catch(e){ DYNAMIC_SYNONYMS = []; }
+  }
+  function setSynonyms(list){
+    if(!Array.isArray(list)) return 0;
+    DYNAMIC_SYNONYMS = list
+      .map(x => ({ from: String(x.from||"").toLowerCase().trim(), to: String(x.to||"").trim() }))
+      .filter(x => x.from.length >= 2 && x.to)
+      .sort((a,b)=> b.from.length - a.from.length);   // คำยาวก่อน กันการแทนที่ทับซ้อน
+    try{ localStorage.setItem('dwmsSynonyms', JSON.stringify(DYNAMIC_SYNONYMS)); }catch(e){}
+    return DYNAMIC_SYNONYMS.length;
+  }
+  function applySynonyms(text){
+    // แทนที่แบบ "ชนคำเดิม" ไม่เติมช่องว่าง เพื่อให้ผลลัพธ์เหมือนกับการพิมพ์คำนั้นมาตรง ๆ
+    // (เคยเติมช่องว่างแล้วทำให้การตัดคำเปลี่ยน จนจับหมวดหมู่ไม่ได้)
+    // ยกเว้นคำแทนที่เป็นอักษรโรมัน/ตัวเลข เช่น en1 หรือ cctv ที่ต้องมีช่องว่างกันคำติดกัน
+    let out = text;
+    DYNAMIC_SYNONYMS.forEach(s=>{
+      const to = s.to.toLowerCase();
+      const pad = /^[a-z0-9]/.test(to) ? " " : "";
+      out = out.split(s.from).join(pad + to + pad);
+    });
+    return out;
+  }
+
   function preprocessQuery(q){
     let s = toArabicDigits((q||"").toString());
     s = s.replace(/[\u200B\uFEFF]/g, "");          // อักขระล่องหนที่ติดมาจากการคัดลอกข้อความ
@@ -1260,6 +1408,7 @@
     const lower = s.toLowerCase();
     let fixed = lower;
     STT_FIXES.forEach(([re, to])=>{ fixed = fixed.replace(re, to); });
+    fixed = applySynonyms(fixed);     // คำพ้องจากชีท ทับหลังสุด เพื่อให้ผู้ใช้แก้ไขพฤติกรรมได้เอง
     return fixed.replace(/\s{2,}/g," ").trim();
   }
 
@@ -2854,6 +3003,11 @@
     if(busy) return;
     const q = elChatInput.value.trim();
     if(!q) return;
+    lastAskedQuestion = q;
+    if(elPinBtn){
+      elPinBtn.disabled = false;
+      elPinBtn.title = getPins().indexOf(q) !== -1 ? 'เอาคำถามนี้ออกจากหมุด' : 'ปักหมุดคำถามนี้';
+    }
     addMessage('user', escapeHtml(q));
     elChatInput.value = "";
     autoResize();
@@ -3262,15 +3416,22 @@
         const before = records.length;
         records = newRecords;
         HAY_CACHE = new WeakMap();     // ล้างแคชข้อความค้นหา เพราะชุดข้อมูลเปลี่ยนใหม่ทั้งหมด
+        let synCount = 0;
+        if(response && Array.isArray(response.synonyms)){
+          synCount = setSynonyms(response.synonyms);
+        }
         rebuildVocab();
         renderMetrics();
         renderQuickSearch();
+        renderBriefing();
+        buildReportOptions();
         setSyncState('live', 'ซิงก์สดล่าสุด ' + fmtTime(new Date()) + ' น.' + (usedFallback ? ' (ช่องทางสำรอง)' : ''));
         syncNote.textContent = usedFallback
           ? 'เรียก Apps Script ไม่สำเร็จ จึงดึงข้อมูลตรงจากชีทแทน — ข้อมูลครบถ้วนเหมือนกัน หากต้องการใช้ Apps Script ให้ตรวจ Deploy ว่าตั้ง Who has access = Anyone'
           : '';
         const diff = newRecords.length - before;
-        toast('ซิงก์สำเร็จ · ' + newRecords.length + ' รายการ' + (diff > 0 ? ' (ใหม่ +' + diff + ')' : ''), 'ok');
+        toast('ซิงก์สำเร็จ · ' + newRecords.length + ' รายการ' + (diff > 0 ? ' (ใหม่ +' + diff + ')' : '') +
+              (synCount ? ' · คำพ้อง ' + synCount + ' คำ' : ''), 'ok');
         finish();
       }catch(e){
         if(!usedFallback && APPS_SCRIPT_URL){ startRequest(true); return; }
@@ -3354,7 +3515,304 @@
   });
   updateLastResultLabel();
 
-  // ================= ธีมไดนามิก / ลูกเล่น UI =================
+  // ============================================================================
+  // ======= แผงสรุปสถานการณ์ / ตัวสร้างรายงาน / คำถามปักหมุด ====================
+  // ============================================================================
+  const elBriefing = document.getElementById('briefing');
+  const elPins = document.getElementById('pins');
+  const elPinBtn = document.getElementById('pinBtn');
+  const elBTime = document.getElementById('bTime');
+  const elBRoom = document.getElementById('bRoom');
+  const elBCat = document.getElementById('bCat');
+  const elBStatus = document.getElementById('bStatus');
+
+  // ---- (4)(5) แผงสรุปสถานการณ์: บอกสิ่งที่ควรรู้ทันทีโดยไม่ต้องพิมพ์ถาม ----
+  function renderBriefing(){
+    if(!elBriefing || !records.length) return;
+    const today = isoToday();
+    const cards = [];
+
+    // 1) วงรอบปัจจุบัน + ความคืบหน้า
+    const cyc = currentCycle();
+    const rg = evalCycleRange(cyc.cycleNum, cyc.buddhistYear);
+    const totalDays = daysBetween(rg.start, rg.end) + 1;
+    const passed = Math.min(totalDays, Math.max(0, daysBetween(rg.start, today) + 1));
+    const leftDays = Math.max(0, totalDays - passed);
+    const inCycle = records.filter(r => r.date >= rg.start && r.date <= rg.end).length;
+    cards.push({
+      cls: leftDays <= 30 ? 'warn' : '',
+      label: 'วงรอบที่ ' + cyc.cycleNum + ' ปี ' + cyc.buddhistYear,
+      value: leftDays + ' วัน',
+      note: 'เหลือก่อนปิดวงรอบ ' + fmtDateTh(rg.end) + ' · บันทึกแล้ว ' + inCycle + ' งาน',
+      bar: Math.round(passed / totalDays * 100),
+      query: cycleLabel(cyc)
+    });
+
+    // 2) นับถอยหลังกำหนดส่งผลประเมิน (ปิดวงรอบแล้วมีเวลา 1 เดือนก่อนสิ้นปีงบประมาณ)
+    const deadline = submitDeadline(cyc);
+    const daysToSubmit = daysBetween(today, deadline.iso);
+    const overdue = today > deadline.iso;
+    cards.push({
+      cls: overdue ? 'danger' : (daysToSubmit <= 45 ? 'warn' : 'ok'),
+      label: 'กำหนดส่งผลประเมิน',
+      value: overdue ? 'เลยกำหนด' : daysToSubmit + ' วัน',
+      note: 'ภายใน ' + fmtDateTh(deadline.iso) + ' (' + deadline.reason + ')',
+      query: cycleLabel(cyc)
+    });
+
+    // 3) แนวโน้มเดือนล่าสุดเทียบเดือนก่อน
+    const byMonth = {};
+    records.forEach(r=>{ const k = r.date.slice(0,7); byMonth[k] = (byMonth[k]||0)+1; });
+    const mk = Object.keys(byMonth).sort();
+    if(mk.length >= 2){
+      const last = mk[mk.length-1], prev = mk[mk.length-2];
+      const chg = byMonth[prev] ? Math.round((byMonth[last]-byMonth[prev])/byMonth[prev]*100) : 0;
+      cards.push({
+        cls: chg > 25 ? 'warn' : '',
+        label: 'ปริมาณงานเดือนล่าสุด',
+        value: (chg > 0 ? '+' : '') + chg + '%',
+        note: monthLabel(last) + ' มี ' + byMonth[last] + ' งาน (เดือนก่อน ' + byMonth[prev] + ')',
+        query: 'สรุปผล' + monthLabel(last)
+      });
+    }
+
+    // 4) จุดที่ครบรอบตรวจแล้ว (จากสถิติการเกิดซ้ำจริง)
+    const latest = records.map(r=>r.date).sort().slice(-1)[0];
+    const rec = recurringPairs(records, 3).filter(t => t.avgGap && t.avgGap > 0);
+    const due = rec.filter(t => daysBetween(t.last, latest) >= t.avgGap).length;
+    if(rec.length){
+      cards.push({
+        cls: due > 0 ? 'warn' : 'ok',
+        label: 'จุดที่ครบรอบตรวจแล้ว',
+        value: due + ' จุด',
+        note: 'จากทั้งหมด ' + rec.length + ' จุดที่มีรูปแบบเกิดซ้ำชัดเจน',
+        query: 'ห้องไหนเสี่ยงเกิดซ้ำ'
+      });
+    }
+
+    // 5) งานที่ยังไม่สำเร็จ
+    const failed = records.filter(r => (r.status||"").trim() && (r.status||"").trim() !== "สำเร็จ").length;
+    cards.push({
+      cls: failed > 0 ? 'danger' : 'ok',
+      label: 'งานที่ยังไม่สำเร็จ',
+      value: failed + ' งาน',
+      note: failed ? 'ควรตรวจสอบและปิดงานก่อนส่งประเมิน' : 'ปิดงานครบถ้วนทุกรายการ',
+      query: 'งานที่ไม่สำเร็จ'
+    });
+
+    // 6) ความครบถ้วนของข้อมูล (ฟิลด์ที่ว่างจะทำให้รายงานเพี้ยน)
+    const incomplete = records.filter(r => !r.room || !r.detail || !r.workload).length;
+    const pct = Math.round((records.length - incomplete) / records.length * 100);
+    cards.push({
+      cls: incomplete > 0 ? 'warn' : 'ok',
+      label: 'ความครบถ้วนของข้อมูล',
+      value: pct + '%',
+      note: incomplete ? incomplete + ' รายการยังกรอกไม่ครบ (ห้อง/รายละเอียด/ภาระงาน)' : 'ทุกรายการกรอกครบ',
+      query: ''
+    });
+
+    const collapsed = lsGet('dwmsBriefCollapsed','') === '1';
+    elBriefing.hidden = false;
+    elBriefing.innerHTML =
+      `<div class="brief-head">
+        <span class="brief-title">📌 สรุปสถานการณ์วันนี้</span>
+        <span class="brief-sub">${fmtDateTh(today)} · คำนวณจากข้อมูลจริงในชีท ${records.length} รายการ</span>
+        <button class="brief-toggle" id="briefToggle" type="button">${collapsed ? 'แสดง' : 'ซ่อน'}</button>
+      </div>
+      <div class="brief-grid" id="briefGrid"${collapsed ? ' hidden' : ''}>` +
+      cards.map(c=>
+        `<button class="brief-card ${c.cls}" type="button" ${c.query ? `data-query="${escapeHtml(c.query)}"` : 'disabled style="cursor:default"'}>
+          <div class="bc-label">${escapeHtml(c.label)}</div>
+          <div class="bc-value">${escapeHtml(c.value)}</div>
+          <div class="bc-note">${escapeHtml(c.note)}</div>
+          ${c.bar !== undefined ? `<div class="brief-bar"><i style="width:${c.bar}%"></i></div>` : ''}
+        </button>`).join("") +
+      `</div>`;
+
+    document.getElementById('briefToggle').addEventListener('click', function(){
+      const grid = document.getElementById('briefGrid');
+      const nowHidden = !grid.hidden;
+      grid.hidden = nowHidden;
+      this.textContent = nowHidden ? 'แสดง' : 'ซ่อน';
+      lsSet('dwmsBriefCollapsed', nowHidden ? '1' : '0');
+    });
+    animateNumbers(elBriefing);
+  }
+
+  /**
+   * กำหนดส่งผลประเมินของแต่ละวงรอบ
+   * ใช้หลักเดียวกับที่ผู้ใช้อธิบาย: วงรอบปิดก่อนสิ้นงวดงบประมาณ 1 เดือน
+   * เพื่อให้มีเวลารวบรวมและส่ง — วงรอบที่ 2 ปิด 31 ส.ค. ส่งภายในสิ้นปีงบประมาณ 30 ก.ย.
+   * วงรอบที่ 1 ปิดสิ้น ก.พ. จึงกำหนดส่งภายในสิ้น มี.ค. ด้วยหลักเดียวกัน
+   */
+  function submitDeadline(c){
+    const rg = evalCycleRange(c.cycleNum, c.buddhistYear);
+    const [y, m] = rg.end.split("-").map(Number);
+    const dY = m === 12 ? y + 1 : y;
+    const dM = m === 12 ? 1 : m + 1;
+    const lastDay = new Date(dY, dM, 0).getDate();
+    return {
+      iso: dY + "-" + String(dM).padStart(2,"0") + "-" + String(lastDay).padStart(2,"0"),
+      reason: c.cycleNum === 2 ? 'สิ้นปีงบประมาณ' : 'หลังปิดวงรอบ 1 เดือน'
+    };
+  }
+
+  // ---- (2) ตัวสร้างรายงานแบบกดเลือก ----
+  function buildReportOptions(){
+    if(!elBTime) return;
+    const months = Array.from(new Set(records.map(r=>r.date.slice(0,7)))).sort().reverse();
+    const cyc = currentCycle(), prev = prevCycle(cyc);
+    const timeOpts = [['all','ทุกช่วงเวลา'],
+      ['cycle:'+cyc.cycleNum+':'+cyc.buddhistYear, 'วงรอบปัจจุบัน (รอบ '+cyc.cycleNum+' ปี '+cyc.buddhistYear+')'],
+      ['cycle:'+prev.cycleNum+':'+prev.buddhistYear, 'วงรอบก่อนหน้า (รอบ '+prev.cycleNum+' ปี '+prev.buddhistYear+')'],
+      ['evalyear:'+cyc.buddhistYear, 'ปีการประเมิน '+cyc.buddhistYear],
+      ['govyear:'+govYearOf(isoToday()), 'ปีงบประมาณ '+govYearOf(isoToday())]
+    ].concat(months.map(m => ['month:'+m, monthLabel(m)]));
+
+    const keep = elBTime.value;
+    elBTime.innerHTML = timeOpts.map(([v,t])=>`<option value="${escapeHtml(v)}">${escapeHtml(t)}</option>`).join("");
+    if(keep) elBTime.value = keep;
+
+    const rooms = Array.from(new Set(records.map(r=>r.room).filter(Boolean))).sort();
+    elBRoom.innerHTML = `<option value="">ทุกห้อง / สถานที่</option>` +
+      rooms.map(r=>`<option value="${escapeHtml(r)}">${escapeHtml(r)}</option>`).join("");
+
+    const cats = Array.from(new Set(records.map(r=>r.category).filter(Boolean))).sort();
+    elBCat.innerHTML = `<option value="">ทุกประเภทงาน</option>` +
+      cats.map(c=>`<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join("");
+  }
+
+  // สร้างรายงานจากตัวเลือก — กรองข้อมูลตรง ๆ ไม่ผ่านการตีความข้อความ จึงแม่นยำ 100%
+  function runReportBuilder(){
+    const tv = elBTime.value || 'all';
+    const room = elBRoom.value, cat = elBCat.value, st = elBStatus.value;
+
+    let list = records.slice();
+    let timeLabel = 'ทุกช่วงเวลา';
+    if(tv.indexOf('month:') === 0){
+      const mk = tv.slice(6);
+      list = list.filter(r => r.date.slice(0,7) === mk);
+      timeLabel = monthLabel(mk);
+    } else if(tv.indexOf('cycle:') === 0){
+      const p = tv.split(':');
+      const rg = evalCycleRange(parseInt(p[1]), parseInt(p[2]));
+      list = list.filter(r => r.date >= rg.start && r.date <= rg.end);
+      timeLabel = 'วงรอบที่ ' + p[1] + ' ปี ' + p[2] + ' (' + fmtDateTh(rg.start) + ' – ' + fmtDateTh(rg.end) + ')';
+    } else if(tv.indexOf('evalyear:') === 0){
+      const by = parseInt(tv.split(':')[1]);
+      const rg = evalYearRange(by);
+      list = list.filter(r => r.date >= rg.start && r.date <= rg.end);
+      timeLabel = 'ปีการประเมิน ' + by;
+    } else if(tv.indexOf('govyear:') === 0){
+      const by = parseInt(tv.split(':')[1]);
+      const rg = govYearRange(by);
+      list = list.filter(r => r.date >= rg.start && r.date <= rg.end);
+      timeLabel = 'ปีงบประมาณ ' + by;
+    }
+    if(room) list = list.filter(r => r.room === room);
+    if(cat)  list = list.filter(r => r.category === cat);
+    if(st === 'ok')  list = list.filter(r => (r.status||'').trim() === 'สำเร็จ');
+    if(st === 'bad') list = list.filter(r => (r.status||'').trim() && (r.status||'').trim() !== 'สำเร็จ');
+
+    const chips = ['🧾 รายงานจากตัวเลือก', '📅 ' + timeLabel];
+    if(room) chips.push('🏷 ' + room);
+    if(cat)  chips.push('📂 ' + cat);
+    if(st)   chips.push(st === 'ok' ? '✅ เฉพาะที่สำเร็จ' : '⚠️ เฉพาะที่ไม่สำเร็จ');
+
+    currentHighlights = [];
+    let html = `<div class="filter-chips">` + chips.map(c=>`<span class="filter-chip">${escapeHtml(c)}</span>`).join("") + `</div>`;
+    if(!list.length){
+      html += `<div class="empty-note">ไม่พบข้อมูลตามเงื่อนไขที่เลือก ลองผ่อนเงื่อนไขบางข้อลงครับ</div>`;
+    } else {
+      const wlSum = list.reduce((s,r)=> s + (r.workload||0), 0);
+      html += `<div class="ans-title">พบ ${list.length} รายการ · รวมภาระงาน ${fmtNum(wlSum)} หน่วย</div>`;
+      html += buildNarrative(list, null);
+      html += `<div class="sec-label">แยกตามประเภทงาน</div>`;
+      html += renderBreakdown(categoryBreakdown(list), list.length);
+      if(!room){
+        html += `<div class="sec-label">สถานที่ที่พบบ่อยที่สุด</div>`;
+        html += renderBreakdown(Object.entries(list.reduce((m,r)=>{ m[r.room]=(m[r.room]||0)+1; return m; },{}))
+          .sort((a,b)=>b[1]-a[1]).slice(0,8), list.length);
+      }
+      html += `<div class="sec-label">รายการ</div>`;
+      html += renderRecordList(list, 15);
+      html += renderInsights(list);
+      html += renderExportBar(list, 'รายงาน ' + timeLabel);
+    }
+    addMessage('user', escapeHtml('[สร้างรายงาน] ' + chips.slice(1).join(' · ')));
+    addMessage('assistant', html);
+    elChatScroll.scrollTop = elChatScroll.scrollHeight;
+  }
+
+  // ---- (3) คำถามที่ปักหมุดไว้ ----
+  let lastAskedQuestion = "";
+  function getPins(){
+    try{ return JSON.parse(localStorage.getItem('dwmsPins') || '[]'); }catch(e){ return []; }
+  }
+  function savePins(arr){
+    try{ localStorage.setItem('dwmsPins', JSON.stringify(arr.slice(0,12))); }catch(e){}
+  }
+  function renderPins(){
+    if(!elPins) return;
+    const pins = getPins();
+    if(!pins.length){ elPins.hidden = true; elPins.innerHTML = ""; return; }
+    elPins.hidden = false;
+    elPins.innerHTML = `<span class="pins-label">📌 คำถามที่ปักหมุด</span>` +
+      pins.map((q,i)=>`<span class="pin-chip" data-query="${escapeHtml(q)}">${escapeHtml(q.length>34 ? q.slice(0,34)+'…' : q)}<span class="pin-x" data-unpin="${i}" title="เอาออก">×</span></span>`).join("");
+  }
+  function togglePin(q){
+    if(!q) return;
+    const pins = getPins();
+    const at = pins.indexOf(q);
+    if(at !== -1){ pins.splice(at,1); toast('เอาคำถามออกจากหมุดแล้ว'); }
+    else { pins.unshift(q); toast('ปักหมุดคำถามแล้ว 📌', 'ok'); }
+    savePins(pins); renderPins();
+  }
+
+
+  // ---- เชื่อมปุ่มของฟีเจอร์ใหม่เข้ากับระบบ ----
+  function wireQueryButtons(root){
+    root.querySelectorAll('[data-query]').forEach(btn=>{
+      if(btn.dataset.wired) return;
+      btn.dataset.wired = "1";
+      btn.addEventListener('click', ()=>{
+        elChatInput.value = btn.getAttribute('data-query');
+        handleSend();
+      });
+    });
+  }
+
+  if(elBriefing){
+    // แผงสรุปถูกวาดใหม่ทุกครั้งที่ซิงก์ จึงผูกปุ่มอัตโนมัติเมื่อเนื้อหาเปลี่ยน
+    new MutationObserver(()=> wireQueryButtons(elBriefing)).observe(elBriefing, { childList:true, subtree:true });
+  }
+  if(elPins){
+    elPins.addEventListener('click', (ev)=>{
+      const x = ev.target.closest('[data-unpin]');
+      if(x){
+        const pins = getPins();
+        pins.splice(parseInt(x.getAttribute('data-unpin'),10), 1);
+        savePins(pins); renderPins();
+        return;
+      }
+      const chip = ev.target.closest('[data-query]');
+      if(chip){ elChatInput.value = chip.getAttribute('data-query'); handleSend(); }
+    });
+  }
+  if(elPinBtn) elPinBtn.addEventListener('click', ()=> togglePin(lastAskedQuestion));
+
+  const elBGo = document.getElementById('bGo');
+  const elBReset = document.getElementById('bReset');
+  if(elBGo) elBGo.addEventListener('click', runReportBuilder);
+  if(elBReset) elBReset.addEventListener('click', ()=>{
+    elBTime.selectedIndex = 0; elBRoom.value = ""; elBCat.value = ""; elBStatus.value = "";
+  });
+
+  loadSynonymsFromCache();
+  renderPins();
+  buildReportOptions();
+  renderBriefing();
+
   // โทนสีทั้งระบบผูกกับตัวแปร --hue ตัวเดียว จึงเปลี่ยนได้ทันทีทั้งหน้าโดยไม่ต้องโหลดใหม่
   const HUE_PRESETS = [
     { name:"ฟ้าคราม",   hue:208, hue2:192 },
