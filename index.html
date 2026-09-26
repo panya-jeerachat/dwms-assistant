@@ -691,8 +691,7 @@
     <div class="quick-search" id="quickSearch"></div>
   </div>
 
-  <p class="foot-note">ระบบค้นหา/สรุปข้อมูลอัตโนมัติจากคำถามภาษาไทย รองรับการสะกดผิด/เสียงเพี้ยน (Fuzzy Matching) อาจตีความคลาดเคลื่อนได้หากคำถามกำกวมมาก — ตรวจสอบ "ตัวกรองที่ใช้" ที่แสดงในทุกคำตอบเพื่อยืนยันความถูกต้อง<br>
-  ทางลัด: กด <span class="kbd">/</span> เพื่อพิมพ์คำถาม · <span class="kbd">Ctrl</span>+<span class="kbd">K</span> ล้างแชท · พิมพ์ <b>ช่วยอะไรได้บ้าง</b> เพื่อดูคำสั่งทั้งหมด</p>
+
 
   <footer class="site-footer">
     <p>© 2569 คณะวิศวกรรมศาสตร์ มหาวิทยาลัยมหาสารคาม</p>
@@ -1158,7 +1157,7 @@
     if(has("ช่วยอะไรได้บ้าง","ทำอะไรได้บ้าง","คำสั่ง","ใช้ยังไง","ใช้อย่างไร","วิธีใช้","help","คู่มือ")) main = "help";
     else if(has("เสี่ยง","เฝ้าระวัง","ซ้ำซาก","ซ้ำซ้อน","น่าจะเกิดอีก","ป้องกัน","ทำนาย","พยากรณ์","watchlist")) main = "risk";
     else if(has("วันไหน","วันในสัปดาห์","รายวัน","วันอะไร","วันจันทร์ถึง")) main = "weekday";
-    else if(has("ไม่สำเร็จ","ล้มเหลว","ค้างอยู่","ยังไม่เสร็จ","ปัญหาที่แก้ไม่ได้")) main = "failed";
+    else if(has("ไม่สำเร็จ","ล้มเหลว","ค้างอยู่","ยังไม่เสร็จ","ปัญหาที่แก้ไม่ได้","อัตราความสำเร็จ","อัตราสำเร็จ")) main = "failed";
     else if(has("หนักที่สุด","ภาระงานสูงสุด","ภาระงานมากที่สุด","งานใหญ่ที่สุด","ใช้เวลานานที่สุด")) main = "heaviest";
     else if(qNorm.indexOf("วิเคราะห์ข้อมูล") !== -1) main = "fullAnalysis";
     else if(EVAL_CYCLE_RE.test(qNorm) ||
@@ -2382,21 +2381,54 @@
   }
 
   // ---- งานที่ยังไม่สำเร็จ ----
-  function renderFailed(){
-    const failed = records.filter(r => (r.status||"").trim() && (r.status||"").trim() !== "สำเร็จ");
-    const rate = records.length ? (failed.length / records.length * 100) : 0;
-    let html = `<div class="ans-title">งานที่สถานะยังไม่สำเร็จ</div>`;
+  // นับแยก "รายปีงบประมาณ" ไม่สะสมข้ามปี เพราะงานที่ค้างจากปีก่อนไม่ควรถูกนำมาถ่วง
+  // อัตราความสำเร็จของปีงบประมาณใหม่ ซึ่งจะทำให้ผลงานปีปัจจุบันดูแย่กว่าความเป็นจริง
+  function renderFailed(targetYear){
+    const isBad = r => (r.status||"").trim() && (r.status||"").trim() !== "สำเร็จ";
+    const years = Array.from(new Set(records.map(r => govYearOf(r.date)))).sort((a,b)=>b-a);
+    const curYear = govYearOf(isoToday());
+    const by = targetYear || (years.indexOf(curYear) !== -1 ? curYear : (years[0] || curYear));
+
+    const rg = govYearRange(by);
+    const inYear = records.filter(r => r.date >= rg.start && r.date <= rg.end);
+    const failed = inYear.filter(isBad);
+    const rate = inYear.length ? (failed.length / inYear.length * 100) : 0;
+
+    let html = `<div class="ans-title">งานที่สถานะยังไม่สำเร็จ · ปีงบประมาณ ${by}</div>`;
+    html += `<div class="narrative">ช่วงที่นับ: <b>${fmtDateTh(rg.start)}</b> ถึง <b>${fmtDateTh(rg.end)}</b><br>
+      ตัวเลขนี้ <b>เริ่มนับใหม่ทุกปีงบประมาณ</b> ไม่สะสมข้ามปี — งานที่ค้างจากปีก่อนจะไม่ถูกนำมาถ่วงอัตราความสำเร็จของปีปัจจุบัน</div>`;
     html += `<div class="ans-stats">
-      <div class="ans-stat"><div class="n">${failed.length}</div><div class="l">รายการที่ไม่สำเร็จ</div></div>
-      <div class="ans-stat"><div class="n">${(100-rate).toFixed(2)}%</div><div class="l">อัตราความสำเร็จรวม</div></div>
-      <div class="ans-stat"><div class="n">${records.length}</div><div class="l">งานทั้งหมด</div></div>
+      <div class="ans-stat"><div class="n">${failed.length}</div><div class="l">ไม่สำเร็จในปีงบ ${by}</div></div>
+      <div class="ans-stat"><div class="n">${inYear.length ? (100-rate).toFixed(2) : "100.00"}%</div><div class="l">อัตราความสำเร็จปีงบ ${by}</div></div>
+      <div class="ans-stat"><div class="n">${inYear.length}</div><div class="l">งานทั้งหมดในปีงบ ${by}</div></div>
     </div>`;
+
     if(!failed.length){
-      html += `<div class="empty-note">ยอดเยี่ยมครับ — ไม่พบงานที่มีสถานะอื่นนอกจาก "สำเร็จ" ในข้อมูลชุดนี้เลย</div>`;
-      return html;
+      html += `<div class="empty-note">ยอดเยี่ยมครับ — ปีงบประมาณ ${by} ยังไม่พบงานที่มีสถานะอื่นนอกจาก "สำเร็จ" เลย</div>`;
+    } else {
+      html += renderRecordList(failed, 20);
+      html += renderExportBar(failed, "งานที่ยังไม่สำเร็จ ปีงบ " + by);
     }
-    html += renderRecordList(failed, 20);
-    html += renderExportBar(failed, "งานที่ยังไม่สำเร็จ");
+
+    // เทียบรายปีให้เห็นว่าแต่ละปีงบประมาณทำได้ดีแค่ไหน โดยไม่ปนกัน
+    if(years.length > 1){
+      html += `<div class="sec-label">เทียบอัตราความสำเร็จแยกรายปีงบประมาณ</div>`;
+      years.forEach(y=>{
+        const r2 = govYearRange(y);
+        const lst = records.filter(r => r.date >= r2.start && r.date <= r2.end);
+        if(!lst.length) return;
+        const bad = lst.filter(isBad).length;
+        const ok = (lst.length - bad) / lst.length * 100;
+        html += `<div class="breakdown-row">
+          <span style="min-width:112px">${y === by ? "<b>ปีงบ " + y + "</b>" : "ปีงบ " + y}</span>
+          <span class="breakdown-bar-track"><span class="breakdown-bar-fill" style="width:${ok.toFixed(1)}%"></span></span>
+          <span class="mono">${ok.toFixed(2)}% · ไม่สำเร็จ ${bad}/${lst.length}</span>
+        </div>`;
+      });
+      html += `<div class="dym"><div class="dym-label">ดูปีอื่น</div>` +
+        years.filter(y => y !== by).map(y=>`<button class="dym-chip" data-query="งานที่ไม่สำเร็จ ปีงบประมาณ ${y}">ปีงบประมาณ ${y}</button>`).join("") +
+        `</div>`;
+    }
     return html;
   }
 
@@ -2632,7 +2664,10 @@
     // ---- กลุ่มคำถามเชิงวิเคราะห์/เปรียบเทียบ/แนวโน้ม ที่ทำงานกับข้อมูลทั้งชุด ไม่ผ่าน filter ตามช่วงเวลา/ห้อง ----
     if(intent.main === "help") return renderHelp();
     if(intent.main === "risk") return renderRiskWatchlist();
-    if(intent.main === "failed") return renderFailed();
+    if(intent.main === "failed"){
+      const fy = qNorm.match(/(?:ปีงบประมาณ|ปีงบ|ปี)\s*(\d{4})/);
+      return renderFailed(fy ? parseInt(fy[1]) : null);
+    }
     if(intent.main === "heaviest") return renderHeaviest();
     if(intent.main === "weekday"){
       const sc = extractTimeScope(qNorm);
@@ -3590,14 +3625,19 @@
       });
     }
 
-    // 5) งานที่ยังไม่สำเร็จ
-    const failed = records.filter(r => (r.status||"").trim() && (r.status||"").trim() !== "สำเร็จ").length;
+    // 5) งานที่ยังไม่สำเร็จ — นับเฉพาะปีงบประมาณปัจจุบัน เริ่มนับใหม่ทุกปี ไม่สะสมข้ามปี
+    const fy = govYearOf(today);
+    const fyRange = govYearRange(fy);
+    const fyList = records.filter(r => r.date >= fyRange.start && r.date <= fyRange.end);
+    const failed = fyList.filter(r => (r.status||"").trim() && (r.status||"").trim() !== "สำเร็จ").length;
+    const okRate = fyList.length ? ((fyList.length - failed) / fyList.length * 100) : 100;
     cards.push({
       cls: failed > 0 ? 'danger' : 'ok',
-      label: 'งานที่ยังไม่สำเร็จ',
-      value: failed + ' งาน',
-      note: failed ? 'ควรตรวจสอบและปิดงานก่อนส่งประเมิน' : 'ปิดงานครบถ้วนทุกรายการ',
-      query: 'งานที่ไม่สำเร็จ'
+      label: 'อัตราความสำเร็จ ปีงบ ' + fy,
+      value: okRate.toFixed(1) + '%',
+      note: (failed ? 'ค้าง ' + failed + ' งาน จาก ' + fyList.length : 'ปิดงานครบ ' + fyList.length + ' รายการ') +
+            ' · เริ่มนับใหม่ทุกปีงบประมาณ',
+      query: 'งานที่ไม่สำเร็จ ปีงบประมาณ ' + fy
     });
 
     // 6) ความครบถ้วนของข้อมูล (ฟิลด์ที่ว่างจะทำให้รายงานเพี้ยน)
