@@ -596,6 +596,11 @@
   // ==== CONFIG ====
   const SHEET_ID = "1am2WPhKcEzATV4478hIq-5R3Oh81eBk0UvC_cp-ZLTs"; // ชีทรายการภาระงานรายรายการ
   const SHEET_GID = ""; // ใส่เลข gid ถ้าข้อมูลอยู่คนละแท็บ
+
+  // (ทางเลือก) URL ของ Web App ที่ deploy จาก Apps Script ในชีท — ดูไฟล์ DWMS_AppsScript ประกอบ
+  // ถ้าใส่ค่าไว้ ระบบจะดึงข้อมูลผ่าน Apps Script ก่อน (เร็วกว่า เพราะมีแคชฝั่งเซิร์ฟเวอร์ และ
+  // ข้อมูลถูกทำความสะอาด/ตรวจสอบมาแล้ว) หากล้มเหลวจะถอยกลับไปใช้ GViz แบบเดิมโดยอัตโนมัติ
+  const APPS_SCRIPT_URL = ""; // เช่น "https://script.google.com/macros/s/AKfycbx.../exec"
   const STATS_SHEET_ID = "1-lTr-EOopi9HqlcojVYQDdU0b3Mio9P7JNRmlBgxjR8"; // ชีทสรุปรายเดือน/ประสิทธิภาพ DWMS
   const STATS_SHEET_GID = "";
   // ================
@@ -1044,6 +1049,7 @@
     else if(qNorm.indexOf("วิเคราะห์ข้อมูล") !== -1) main = "fullAnalysis";
     else if(EVAL_CYCLE_RE.test(qNorm) ||
             /(?:วง)?รอบ[^0-9]{0,12}(?:ปัจจุบัน|นี้|ตอนนี้|ที่แล้ว|ก่อนหน้า|ที่ผ่านมา)/.test(qNorm)) main = "evalCycle";
+    else if(/ปีงบประมาณ|ปีงบ/.test(qNorm)) main = "fiscalYear";
     else if(qNorm.indexOf("kpi") !== -1) main = "kpi";
     else if(qNorm.indexOf("ผู้บริหาร") !== -1 || qNorm.indexOf("executive") !== -1 ||
             qNorm.indexOf("ป.03") !== -1 || qNorm.indexOf("ป03") !== -1 || qNorm.indexOf("แนะนำ") !== -1) main = "executive";
@@ -1196,14 +1202,20 @@
     return (text||"").replace(NUM_RUN_RE, (run, offset, whole)=>{
       const value = parseThaiNumberRun(run);
       if(value === null) return run;
+
+      // ป้องกันการตัดคำผิดกลางคำ: ถ้าตัวอักษรก่อนหน้าเป็น "สระหน้า" (เ แ โ ใ ไ)
+      // แปลว่าพยัญชนะตัวแรกของ run เป็นส่วนหนึ่งของพยางค์อื่นอยู่แล้ว ไม่ใช่ตัวเลข
+      // เช่น "เสี่ยง" มี "สี่" ซ่อนอยู่ และ "เหลี่ยม" มี "ลี่" — ต้องไม่แปลงเด็ดขาด
+      const prevChar = offset > 0 ? whole[offset-1] : "";
+      if(/[\u0E40-\u0E44]/.test(prevChar)) return run;
+
       // คำเดี่ยวสั้น ๆ เสี่ยงเป็นส่วนหนึ่งของคำอื่น (เช่น "ศูนย์หม่อนไหม", "ห้ามใช้")
-      // จึงแปลงเฉพาะเมื่อมีคำบ่งชี้นำหน้า หรือหลังคำนั้นไม่ใช่พยัญชนะไทยต่อเนื่อง
-      const isSingle = !/(?:สิบ|ร้อย|พัน|หมื่น|แสน|ล้าน)/.test(run) &&
-                       run.length <= 6 && parseThaiNumberRun(run).length === 1;
+      // จึงแปลงเฉพาะเมื่อมีคำบ่งชี้ "ติดอยู่ข้างหน้าพอดี" หรือหลังคำนั้นไม่ใช่พยัญชนะไทยต่อเนื่อง
+      const isSingle = !/(?:สิบ|ร้อย|พัน|หมื่น|แสน|ล้าน)/.test(run) && value.length === 1;
       if(isSingle){
-        const before = whole.slice(Math.max(0, offset - 8), offset);
+        const before = whole.slice(Math.max(0, offset - 10), offset).replace(/\s+$/,"");
         const after = whole.slice(offset + run.length, offset + run.length + 1);
-        const hasCue = NUM_CUES.some(c => before.indexOf(c) !== -1);
+        const hasCue = NUM_CUES.some(c => before.endsWith(c));
         const followedByThai = /[\u0E01-\u0E2E]/.test(after);
         if(!hasCue && followedByThai) return run;   // น่าจะเป็นส่วนของคำอื่น ปล่อยไว้เหมือนเดิม
       }
@@ -1867,36 +1879,44 @@
     return renderKpiCard(sorted[sorted.length-1], sorted);
   }
 
-  // ---- วงรอบการประเมิน (ป.03) ----
-  // นิยามที่ใช้จริงของคณะฯ:
-  //   รอบที่ 1 ของปี พ.ศ. Y = 1 กันยายน (Y-1)  ถึง  28/29 กุมภาพันธ์ Y   (คร่อมปี)
-  //   รอบที่ 2 ของปี พ.ศ. Y = 1 มีนาคม Y       ถึง  31 สิงหาคม Y
+  // ---- วงรอบการประเมิน (ป.03) อิง "ปีงบประมาณ" ----
+  // นิยามที่ใช้จริง:
+  //   ปีงบประมาณ Y  = 1 ตุลาคม (Y-1)  ถึง  30 กันยายน Y
+  //   รอบที่ 1 ของปีงบประมาณ Y = 1 ตุลาคม (Y-1) ถึง 31 มีนาคม Y   (คร่อมปีปฏิทิน)
+  //   รอบที่ 2 ของปีงบประมาณ Y = 1 เมษายน Y      ถึง 30 กันยายน Y
   // ตัวอย่างตรวจสอบ:
-  //   รอบ 1 ปี 2570 = 1 ก.ย. 2569 – 28 ก.พ. 2570
-  //   รอบ 2 ปี 2570 = 1 มี.ค. 2570 – 31 ส.ค. 2570
-  //   รอบ 1 ปี 2571 = 1 ก.ย. 2570 – 29 ก.พ. 2571  (ปีอธิกสุรทิน ค.ศ. 2028)
-  // วันสิ้นเดือนกุมภาพันธ์คำนวณจากปฏิทินจริงเสมอ จึงใช้ได้กับปีถัด ๆ ไปโดยไม่ต้องแก้โค้ด
+  //   รอบ 1 ปีงบ 2570 = 1 ต.ค. 2569 – 31 มี.ค. 2570
+  //   รอบ 2 ปีงบ 2570 = 1 เม.ย. 2570 – 30 ก.ย. 2570
+  // ขอบวงรอบเป็นวันสิ้นเดือนคงที่ (31 มี.ค. / 30 ก.ย.) จึงไม่มีผลจากปีอธิกสุรทิน
   function evalCycleRange(cycleNum, buddhistYear){
     const gYear = buddhistYear - 543;
     if(cycleNum === 1){
-      const startY = gYear - 1, endY = gYear;
-      const isLeap = (endY%4===0 && endY%100!==0) || endY%400===0;
-      const endDay = isLeap ? 29 : 28;
-      return { start: startY+"-09-01", end: endY+"-02-"+String(endDay).padStart(2,"0") };
+      return { start: (gYear - 1) + "-10-01", end: gYear + "-03-31" };
     }
-    return { start: gYear+"-03-01", end: gYear+"-08-31" };
+    return { start: gYear + "-04-01", end: gYear + "-09-30" };
+  }
+
+  // ช่วงของ "ทั้งปีงบประมาณ" (ใช้ตอบคำถามระดับปี ไม่เจาะรอบ)
+  function fiscalYearRange(buddhistYear){
+    const gYear = buddhistYear - 543;
+    return { start: (gYear - 1) + "-10-01", end: gYear + "-09-30" };
+  }
+  // วันที่ใด ๆ อยู่ในปีงบประมาณไหน
+  function fiscalYearOf(iso){
+    const [y, m] = iso.split("-").map(Number);
+    return (m >= 10 ? y + 1 : y) + 543;
   }
 
   function isoToday(){
     return todayObj.getFullYear() + "-" + String(todayObj.getMonth()+1).padStart(2,"0") + "-" + String(todayObj.getDate()).padStart(2,"0");
   }
 
-  // วงรอบที่ "วันนี้" ตกอยู่ — ใช้ตอบคำถามอย่าง "วงรอบปัจจุบัน" และใช้บอกสถานะของวงรอบที่ถาม
+  // วงรอบที่ "วันนี้" ตกอยู่ — ใช้ตอบ "วงรอบปัจจุบัน" และบอกสถานะของวงรอบที่ถาม
   function currentCycle(){
     const gy = todayObj.getFullYear(), m = todayObj.getMonth();   // 0 = ม.ค.
-    if(m >= 8) return { cycleNum:1, buddhistYear: gy + 1 + 543 };  // ก.ย.–ธ.ค. -> รอบ 1 ของปีถัดไป
-    if(m <= 1) return { cycleNum:1, buddhistYear: gy + 543 };      // ม.ค.–ก.พ. -> ยังอยู่รอบ 1 ของปีนี้
-    return { cycleNum:2, buddhistYear: gy + 543 };                 // มี.ค.–ส.ค. -> รอบ 2 ของปีนี้
+    if(m >= 9) return { cycleNum:1, buddhistYear: gy + 1 + 543 };  // ต.ค.–ธ.ค. -> รอบ 1 ของปีงบถัดไป
+    if(m <= 2) return { cycleNum:1, buddhistYear: gy + 543 };      // ม.ค.–มี.ค. -> ยังอยู่รอบ 1 ของปีงบนี้
+    return { cycleNum:2, buddhistYear: gy + 543 };                 // เม.ย.–ก.ย. -> รอบ 2 ของปีงบนี้
   }
   function prevCycle(c){
     return c.cycleNum === 1 ? { cycleNum:2, buddhistYear:c.buddhistYear-1 } : { cycleNum:1, buddhistYear:c.buddhistYear };
@@ -1904,7 +1924,7 @@
   function nextCycle(c){
     return c.cycleNum === 1 ? { cycleNum:2, buddhistYear:c.buddhistYear } : { cycleNum:1, buddhistYear:c.buddhistYear+1 };
   }
-  function cycleLabel(c){ return "วงรอบการประเมินที่ " + c.cycleNum + " ปี " + c.buddhistYear; }
+  function cycleLabel(c){ return "วงรอบการประเมินที่ " + c.cycleNum + " ปีงบประมาณ " + c.buddhistYear; }
 
   function extractEvalCycle(qOriginal, qNorm){
     // คำถามแบบอ้างอิงสัมพัทธ์ ที่ไม่มีเลขรอบ/เลขปีเลย เช่น "วงรอบปัจจุบัน" "รอบที่แล้ว"
@@ -1922,7 +1942,7 @@
     // หา "ปี" ให้ยืดหยุ่น: รองรับทั้ง "ปี 2569", "พ.ศ. 2570", "ปี 69" และปีที่พูดเป็นคำอ่าน
     // ข้อควรระวัง: ต้องไม่หยิบเลขรอบ (1/2) มาเป็นปีโดยบังเอิญ จึงอ่านเฉพาะเลข 2 หรือ 4 หลัก
     let buddhistYear = null;
-    const yearCued = qNorm.match(/(?:ปี|พ\.?ศ\.?)\s*(\d{2,4})/);
+    const yearCued = qNorm.match(/(?:ปีงบประมาณ|ปีงบ|ปี|พ\.?ศ\.?)\s*(\d{2,4})/);
     const yearAny  = qNorm.match(/(\d{4})/);
     const rawYear = yearCued ? parseInt(yearCued[1]) : (yearAny ? parseInt(yearAny[1]) : null);
     if(rawYear !== null){
@@ -1952,7 +1972,7 @@
     const successCount = filtered.filter(r => (r.status||"").trim() === "สำเร็จ").length;
     const avgSuccess = filtered.length ? (successCount / filtered.length * 100) : null;
 
-    const title = "สรุปภาระงานวงรอบการประเมินที่ " + cycleNum + " ปี " + buddhistYear;
+    const title = "สรุปภาระงานวงรอบการประเมินที่ " + cycleNum + " ปีงบประมาณ " + buddhistYear;
     const me = { cycleNum, buddhistYear };
     const today = isoToday();
     const totalDays = daysBetween(range.start, range.end) + 1;
@@ -1999,7 +2019,7 @@
           alts.map(a=>`<button class="dym-chip" data-query="${escapeHtml(cycleLabel(a.c))}">${escapeHtml(cycleLabel(a.c))} · ${a.n} งาน</button>`).join("") +
           `</div>`;
       }
-      html += `<div class="corr-hedge">นิยามวงรอบที่ระบบใช้: <b>รอบที่ 1</b> = 1 ก.ย. ของปีก่อนหน้า ถึง 28/29 ก.พ. ของปีวงรอบ · <b>รอบที่ 2</b> = 1 มี.ค. ถึง 31 ส.ค. ของปีวงรอบ (วันสิ้นเดือน ก.พ. คำนวณจากปฏิทินจริง จึงรองรับปีอธิกสุรทินทุกปีถัดไปโดยอัตโนมัติ)</div>`;
+      html += `<div class="corr-hedge">นิยามวงรอบที่ระบบใช้ (อิงปีงบประมาณ): <b>ปีงบประมาณ Y</b> = 1 ต.ค. (Y-1) ถึง 30 ก.ย. Y · <b>รอบที่ 1</b> = 1 ต.ค. (Y-1) ถึง 31 มี.ค. Y · <b>รอบที่ 2</b> = 1 เม.ย. Y ถึง 30 ก.ย. Y</div>`;
       return html;
     }
 
@@ -2023,7 +2043,7 @@
       <button class="dym-chip" data-query="${escapeHtml(cycleLabel(pv))}">◀ ${escapeHtml(cycleLabel(pv))}</button>
       <button class="dym-chip" data-query="${escapeHtml(cycleLabel(nx))}">${escapeHtml(cycleLabel(nx))} ▶</button>
       </div>`;
-    html += `<div class="corr-hedge">นิยามวงรอบ: <b>รอบที่ 1</b> = 1 ก.ย. ของปีก่อนหน้า – 28/29 ก.พ. ของปีวงรอบ · <b>รอบที่ 2</b> = 1 มี.ค. – 31 ส.ค. ของปีวงรอบ · ลดกระดาษ/ลดเวลาคำนวณจากจำนวนงานชุดนี้โดยตรง (×2 แผ่น, ×45 นาทีต่องาน) เพื่อให้ตัวเลขสอดคล้องกับ "งานทั้งหมด" เสมอ — ส่งออกด้านล่างเพื่อแนบเป็นหลักฐาน ป.03 ได้เลย</div>`;
+    html += `<div class="corr-hedge">นิยามวงรอบ (อิงปีงบประมาณ): <b>รอบที่ 1</b> = 1 ต.ค. ของปีก่อนหน้า – 31 มี.ค. ของปีงบประมาณ · <b>รอบที่ 2</b> = 1 เม.ย. – 30 ก.ย. ของปีงบประมาณ · ลดกระดาษ/ลดเวลาคำนวณจากจำนวนงานชุดนี้โดยตรง (×2 แผ่น, ×45 นาทีต่องาน) เพื่อให้ตัวเลขสอดคล้องกับ "งานทั้งหมด" เสมอ — ส่งออกด้านล่างเพื่อแนบเป็นหลักฐาน ป.03 ได้เลย</div>`;
     html += renderExportBar(filtered, title);
     return html;
   }
@@ -2273,7 +2293,7 @@
   function renderHelp(){
     const groups = [
       ["ค้นหาแบบเจาะจง", ["EN1-204", "ปัญหาอินเทอร์เน็ตเดือนกรกฎาคม", "งานวันนี้", "ห้อง 312 มีปัญหาอะไรบ้าง", "โปรเจคเตอร์เสียกี่ครั้ง"]],
-      ["สรุป & รายงาน", ["สรุปผลรายเดือน", "สรุปผลเดือนกรกฎาคม 2569", "เขียนรายงานเดือนมิถุนายน", "ช่วยสรุปรายงานผู้บริหาร", "วงรอบการประเมินที่ 2 ปี 2569"]],
+      ["สรุป & รายงาน", ["สรุปผลรายเดือน", "สรุปผลเดือนกรกฎาคม 2569", "เขียนรายงานเดือนมิถุนายน", "ช่วยสรุปรายงานผู้บริหาร", "วงรอบการประเมินที่ 2 ปีงบประมาณ 2569", "ปีงบประมาณ 2569", "วงรอบปัจจุบัน"]],
       ["วิเคราะห์เชิงลึก", ["วิเคราะห์ข้อมูล", "แนวโน้ม", "เปรียบเทียบพฤษภาคมกับมิถุนายน", "สรุปผล KPI รายเดือน", "ความสัมพันธ์ระหว่างไฟฟ้ากับ CCTV"]],
       ["จัดอันดับ & เฝ้าระวัง", ["อาคารไหนมีปัญหามากที่สุด", "ห้องไหนเสียบ่อยที่สุด", "ห้องไหนเสี่ยงเกิดซ้ำ", "วันไหนงานเข้าเยอะที่สุด", "งานที่หนักที่สุด", "งานที่ไม่สำเร็จ", "timeline เหตุการณ์"]]
     ];
@@ -2299,6 +2319,72 @@
       <div class="dym-label">คุณหมายถึงคำเหล่านี้หรือเปล่า? (คำที่มีอยู่จริงในข้อมูล — กดเพื่อค้นต่อได้ทันที)</div>
       ${uniq.map(t=>`<button class="dym-chip" data-query="${escapeHtml(prefix + t)}">${escapeHtml(t)}</button>`).join("")}
     </div>`;
+  }
+
+  // ---- สรุปทั้งปีงบประมาณ (ครอบทั้ง 2 วงรอบ) ----
+  function renderFiscalYear(buddhistYear){
+    const rg = fiscalYearRange(buddhistYear);
+    const list = records.filter(r => r.date >= rg.start && r.date <= rg.end);
+    const c1 = evalCycleRange(1, buddhistYear), c2 = evalCycleRange(2, buddhistYear);
+    const l1 = records.filter(r => r.date >= c1.start && r.date <= c1.end);
+    const l2 = records.filter(r => r.date >= c2.start && r.date <= c2.end);
+    const wl = a => a.reduce((s,r)=> s + (r.workload||0), 0);
+
+    let html = `<div class="ans-title">สรุปภาระงานทั้งปีงบประมาณ ${buddhistYear}</div>`;
+    html += `<div class="narrative">ช่วงปีงบประมาณ: <b>${fmtDateTh(rg.start)}</b> ถึง <b>${fmtDateTh(rg.end)}</b> · แบ่งเป็น 2 วงรอบการประเมิน (รอบที่ 1 = 1 ต.ค.–31 มี.ค. · รอบที่ 2 = 1 เม.ย.–30 ก.ย.)</div>`;
+
+    if(!list.length){
+      html += `<div class="empty-note">ยังไม่พบรายการภาระงานที่บันทึกไว้ในปีงบประมาณ ${buddhistYear}</div>`;
+      const alt = fiscalYearOf(records.map(r=>r.date).sort().slice(-1)[0] || isoToday());
+      if(alt !== buddhistYear){
+        html += `<div class="dym"><button class="dym-chip" data-query="ปีงบประมาณ ${alt}">ดูปีงบประมาณ ${alt} แทน</button></div>`;
+      }
+      return html;
+    }
+
+    html += `<div class="ans-stats">
+      <div class="ans-stat"><div class="n">${list.length}</div><div class="l">งานทั้งปีงบประมาณ</div></div>
+      <div class="ans-stat"><div class="n">${fmtNum(wl(list))}</div><div class="l">รวมภาระงาน (หน่วย)</div></div>
+      <div class="ans-stat"><div class="n">${new Set(list.map(r=>r.room)).size}</div><div class="l">สถานที่ที่ให้บริการ</div></div>
+    </div>`;
+
+    html += `<div class="sec-label">เปรียบเทียบระหว่างวงรอบ</div>`;
+    [[1,c1,l1],[2,c2,l2]].forEach(([n,rgc,lst])=>{
+      const pct = list.length ? Math.round(lst.length/list.length*100) : 0;
+      html += `<div class="breakdown-row">
+        <span style="min-width:112px">รอบที่ ${n} <span class="mono" style="font-size:10px;color:var(--text-soft)">${fmtDateTh(rgc.start).replace(/ 25\d\d/,"")}–${fmtDateTh(rgc.end).replace(/ 25\d\d/,"")}</span></span>
+        <span class="breakdown-bar-track"><span class="breakdown-bar-fill" style="width:${pct}%"></span></span>
+        <span class="mono">${lst.length} งาน · ${fmtNum(wl(lst))} หน่วย</span>
+      </div>`;
+    });
+    if(l1.length && l2.length){
+      const chg = Math.round((l2.length - l1.length)/l1.length*100);
+      html += `<div class="narrative">รอบที่ 2 มีปริมาณงาน <b>${chg>0?"มากกว่า":(chg<0?"น้อยกว่า":"เท่ากับ")}</b> รอบที่ 1 อยู่ <b>${Math.abs(chg)}%</b> (${l1.length} → ${l2.length} งาน)</div>`;
+    }
+
+    html += `<div class="sec-label">แยกตามเดือน (เรียงตามปีงบประมาณ)</div>`;
+    const byMonth = {};
+    list.forEach(r=>{ const k = r.date.slice(0,7); byMonth[k] = (byMonth[k]||0)+1; });
+    const maxM = Math.max(...Object.values(byMonth), 1);
+    Object.keys(byMonth).sort().forEach(k=>{
+      html += `<div class="breakdown-row">
+        <span style="min-width:104px">${monthLabel(k)}</span>
+        <span class="breakdown-bar-track"><span class="breakdown-bar-fill" style="width:${Math.round(byMonth[k]/maxM*100)}%"></span></span>
+        <span class="mono">${byMonth[k]}</span>
+      </div>`;
+    });
+
+    html += `<div class="sec-label">แยกตามประเภทงาน</div>`;
+    html += renderBreakdown(categoryBreakdown(list), list.length);
+    html += renderInsights(list);
+    html += `<div class="dym"><div class="dym-label">เจาะรายวงรอบ</div>
+      <button class="dym-chip" data-query="วงรอบการประเมินที่ 1 ปีงบประมาณ ${buddhistYear}">รอบที่ 1 ปีงบ ${buddhistYear}</button>
+      <button class="dym-chip" data-query="วงรอบการประเมินที่ 2 ปีงบประมาณ ${buddhistYear}">รอบที่ 2 ปีงบ ${buddhistYear}</button>
+      <button class="dym-chip" data-query="ปีงบประมาณ ${buddhistYear-1}">◀ ปีงบ ${buddhistYear-1}</button>
+      <button class="dym-chip" data-query="ปีงบประมาณ ${buddhistYear+1}">ปีงบ ${buddhistYear+1} ▶</button>
+      </div>`;
+    html += renderExportBar(list, "ปีงบประมาณ " + buddhistYear);
+    return html;
   }
 
   // ================= RESPONSE RENDERING =================
@@ -2368,6 +2454,16 @@
       const listW = applyFilters(sc, rm, tp, tp ? [] : extractKeywords(qNorm));
       return renderWeekday(listW.length ? listW : records,
         listW.length && listW.length !== records.length ? "การกระจายงานตามวันในสัปดาห์ (เฉพาะผลที่กรองไว้)" : "การกระจายงานตามวันในสัปดาห์ (ทั้งหมด)");
+    }
+    if(intent.main === "fiscalYear"){
+      const ym = qNorm.match(/(?:ปีงบประมาณ|ปีงบ)\s*(\d{2,4})/) || qNorm.match(/(\d{4})/);
+      let by = ym ? parseInt(ym[1]) : null;
+      if(by !== null){
+        if(by >= 1900 && by < 2400) by += 543;
+        else if(by >= 40 && by <= 99) by = 2500 + by;
+      }
+      if(by === null || by < 2400) by = fiscalYearOf(isoToday());
+      return renderFiscalYear(by);
     }
     if(intent.main === "fullAnalysis") return renderFullAnalysis();
     if(intent.main === "evalCycle"){
@@ -2893,7 +2989,8 @@
   const EXAMPLE_QUESTIONS = [
     "วิเคราะห์ข้อมูล",
     "สรุปผล KPI รายเดือน",
-    "วงรอบการประเมินที่ 2 ปี 2569",
+    "วงรอบการประเมินที่ 2 ปีงบประมาณ 2569",
+    "ปีงบประมาณ 2569",
     "แนวโน้ม",
     "สรุปผลรายเดือน",
     "อาคารไหนมีปัญหามากที่สุด",
@@ -3101,39 +3198,74 @@
       finish();
     }
 
+    let usedFallback = false;
+
     window[CALLBACK_NAME] = function(response){
       try{
-        if(!response || response.status === 'error'){
+        // รองรับทั้ง 2 รูปแบบ: ผลลัพธ์จาก Apps Script ({status:"ok", records:[...]})
+        // และผลลัพธ์ดิบจาก GViz ({table:{...}}) เพื่อให้ถอยกลับไปใช้ช่องทางเดิมได้เสมอ
+        let newRecords = null;
+        if(response && Array.isArray(response.records)){
+          newRecords = response.records.filter(r => r && r.date && r.category);
+        } else if(response && response.table){
+          newRecords = gvizToRecords(response.table);
+        }
+        if(!newRecords){
+          if(!usedFallback && APPS_SCRIPT_URL){ startRequest(true); return; }
           fail('ตรวจสอบสิทธิ์ "Anyone with the link: Viewer"');
           return;
         }
-        const newRecords = gvizToRecords(response.table);
-        if(!newRecords.length){ fail('ไม่พบแถวข้อมูลในชีท'); return; }
+        if(!newRecords.length){
+          if(!usedFallback && APPS_SCRIPT_URL){ startRequest(true); return; }
+          fail('ไม่พบแถวข้อมูลในชีท'); return;
+        }
         const before = records.length;
         records = newRecords;
         HAY_CACHE = new WeakMap();     // ล้างแคชข้อความค้นหา เพราะชุดข้อมูลเปลี่ยนใหม่ทั้งหมด
         rebuildVocab();
         renderMetrics();
         renderQuickSearch();
-        setSyncState('live', 'ซิงก์สดล่าสุด ' + fmtTime(new Date()) + ' น.');
+        setSyncState('live', 'ซิงก์สดล่าสุด ' + fmtTime(new Date()) + ' น.' + (usedFallback ? ' (ช่องทางสำรอง)' : ''));
         const diff = newRecords.length - before;
         toast('ซิงก์สำเร็จ · ' + newRecords.length + ' รายการ' + (diff > 0 ? ' (ใหม่ +' + diff + ')' : ''), 'ok');
         finish();
       }catch(e){
+        if(!usedFallback && APPS_SCRIPT_URL){ startRequest(true); return; }
         fail('อ่านข้อมูลไม่สำเร็จ: ' + e.message);
       }
     };
 
-    const gidParam = SHEET_GID ? ("&gid=" + encodeURIComponent(SHEET_GID)) : "";
-    const url = "https://docs.google.com/spreadsheets/d/" + SHEET_ID +
-      "/gviz/tq?tqx=out:json;responseHandler:" + CALLBACK_NAME + gidParam;
+    function startRequest(forceGviz){
+      usedFallback = !!forceGviz;
+      const old = document.getElementById('gviz-jsonp-script');
+      if(old) old.remove();
+      if(syncTimeoutId){ clearTimeout(syncTimeoutId); syncTimeoutId = null; }
 
-    const script = document.createElement('script');
-    script.id = 'gviz-jsonp-script';
-    script.src = url;
-    script.onerror = function(){ fail('โหลดสคริปต์จาก Google Sheets ไม่สำเร็จ (เครือข่าย/สิทธิ์การเข้าถึง)'); };
-    document.body.appendChild(script);
-    syncTimeoutId = setTimeout(()=>{ fail('หมดเวลารอการตอบกลับจากชีท'); }, 10000);
+      let url;
+      if(APPS_SCRIPT_URL && !forceGviz){
+        url = APPS_SCRIPT_URL + (APPS_SCRIPT_URL.indexOf("?") === -1 ? "?" : "&") +
+              "action=records&callback=" + CALLBACK_NAME + "&t=" + Date.now();
+      } else {
+        const gidParam = SHEET_GID ? ("&gid=" + encodeURIComponent(SHEET_GID)) : "";
+        url = "https://docs.google.com/spreadsheets/d/" + SHEET_ID +
+              "/gviz/tq?tqx=out:json;responseHandler:" + CALLBACK_NAME + gidParam;
+      }
+
+      const script = document.createElement('script');
+      script.id = 'gviz-jsonp-script';
+      script.src = url;
+      script.onerror = function(){
+        if(!forceGviz && APPS_SCRIPT_URL){ startRequest(true); return; }
+        fail('โหลดข้อมูลไม่สำเร็จ (เครือข่าย/สิทธิ์การเข้าถึง)');
+      };
+      document.body.appendChild(script);
+      syncTimeoutId = setTimeout(()=>{
+        if(!forceGviz && APPS_SCRIPT_URL){ startRequest(true); return; }
+        fail('หมดเวลารอการตอบกลับจากชีท');
+      }, 10000);
+    }
+
+    startRequest(false);
   }
 
   syncBtn.addEventListener('click', syncFromSheet);
